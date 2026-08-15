@@ -16,18 +16,21 @@ return new class extends Migration
                 $table->string('name');
                 $table->string('code')->unique(); // e.g. 'crm', 'mutasi', 'invoicing', 'hr'
                 $table->string('icon')->nullable()->default('bi bi-box-seam');
-                $table->text('description')->nullable();
+                $table->enum('billing_type', ['subscription', 'one_time', 'freemium'])->default('subscription');
                 $table->decimal('price_monthly', 12, 2)->default(0);
+                $table->decimal('price_yearly', 12, 2)->default(0);
+                $table->decimal('price_one_time', 12, 2)->default(0);
+                $table->text('description')->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->timestamps();
             });
 
             // Seed default application suites
             DB::table('cms_apps')->insert([
-                ['name' => 'Mutasi Suite', 'code' => 'mutasi', 'icon' => 'bi bi-arrow-repeat', 'description' => 'Rekap & Jurnal Mutasi Finansial per Rekening Bank & Kas', 'price_monthly' => 300000, 'created_at' => now()],
-                ['name' => 'CRM Suite', 'code' => 'crm', 'icon' => 'bi bi-people-fill', 'description' => 'Leads Management, Sales Pipeline Deals & Follow-up', 'price_monthly' => 500000, 'created_at' => now()],
-                ['name' => 'Invoicing & Billing', 'code' => 'invoicing', 'icon' => 'bi bi-receipt-cutoff', 'description' => 'Tagihan Invoice, Payment Gateway & Tax Billing', 'price_monthly' => 250000, 'created_at' => now()],
-                ['name' => 'HR & Absensi', 'code' => 'hr', 'icon' => 'bi bi-clock-history', 'description' => 'Manajemen SDM, Kehadiran, Cuti & Penggajian', 'price_monthly' => 350000, 'created_at' => now()],
+                ['name' => 'Mutasi Suite', 'code' => 'mutasi', 'icon' => 'bi bi-arrow-repeat', 'billing_type' => 'freemium', 'description' => 'Aplikasi Mutasi Finansial Gratis + Addon Metered Akun Bank (100k/bank)', 'price_monthly' => 0, 'price_one_time' => 0, 'created_at' => now()],
+                ['name' => 'CRM Suite', 'code' => 'crm', 'icon' => 'bi bi-people-fill', 'billing_type' => 'subscription', 'description' => 'Leads Management, Sales Pipeline Deals & Follow-up (Subscription)', 'price_monthly' => 500000, 'price_yearly' => 5000000, 'created_at' => now()],
+                ['name' => 'Invoicing & Billing', 'code' => 'invoicing', 'icon' => 'bi bi-receipt-cutoff', 'billing_type' => 'one_time', 'description' => 'Tagihan Invoice, Payment Gateway & Tax Billing (Sekali Beli / Lifetime)', 'price_one_time' => 2500000, 'price_monthly' => 0, 'created_at' => now()],
+                ['name' => 'HR & Absensi', 'code' => 'hr', 'icon' => 'bi bi-clock-history', 'billing_type' => 'subscription', 'description' => 'Manajemen SDM, Kehadiran, Cuti & Penggajian (Subscription)', 'price_monthly' => 350000, 'price_yearly' => 3500000, 'created_at' => now()],
             ]);
         }
 

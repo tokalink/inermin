@@ -18,8 +18,18 @@ class InerminAppsController extends InerminController
             ['label' => 'CODE', 'name' => 'code', 'callback' => function ($row) {
                 return '<span class="font-mono text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">' . $row->code . '</span>';
             }],
-            ['label' => 'PRICE / MO', 'name' => 'price_monthly', 'callback' => function ($row) {
+            ['label' => 'BILLING TYPE', 'name' => 'billing_type', 'callback' => function ($row) {
+                return match ($row->billing_type) {
+                    'one_time' => '<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Sekali Beli (Lifetime)</span>',
+                    'freemium' => '<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Freemium (Gratis + Addon)</span>',
+                    default => '<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Berlangganan (Subscription)</span>',
+                };
+            }],
+            ['label' => 'HARGA BULANAN', 'name' => 'price_monthly', 'callback' => function ($row) {
                 return '<span class="font-mono font-bold text-emerald-500">Rp ' . number_format($row->price_monthly ?: 0, 0, ',', '.') . '</span>';
+            }],
+            ['label' => 'HARGA LIFETIME', 'name' => 'price_one_time', 'callback' => function ($row) {
+                return '<span class="font-mono font-bold text-indigo-400">Rp ' . number_format($row->price_one_time ?: 0, 0, ',', '.') . '</span>';
             }],
             ['label' => 'STATUS', 'name' => 'is_active', 'callback' => function ($row) {
                 return $row->is_active 
@@ -32,7 +42,20 @@ class InerminAppsController extends InerminController
             ['label' => 'Application Name', 'name' => 'name', 'type' => 'text', 'required' => true, 'placeholder' => 'e.g. Mutasi Suite, CRM Suite'],
             ['label' => 'Application Code', 'name' => 'code', 'type' => 'text', 'required' => true, 'placeholder' => 'e.g. mutasi, crm, invoicing (slug identifier)'],
             ['label' => 'Icon Class', 'name' => 'icon', 'type' => 'text', 'placeholder' => 'e.g. bi bi-arrow-repeat, bi bi-people-fill'],
-            ['label' => 'Monthly Price (Rp)', 'name' => 'price_monthly', 'type' => 'money', 'required' => true],
+            [
+                'label' => 'Model Pembayaran (Billing Model)',
+                'name'  => 'billing_type',
+                'type'  => 'select',
+                'dataenum' => [
+                    'subscription' => 'Berlangganan (Bulanan / Tahunan)',
+                    'one_time'     => 'Sekali Beli (One-time Purchase / Lifetime)',
+                    'freemium'     => 'Freemium (Aplikasi Gratis + Pay Per Addon / Per Unit Bank)'
+                ],
+                'required' => true
+            ],
+            ['label' => 'Harga Bulanan / Monthly (Rp)', 'name' => 'price_monthly', 'type' => 'money'],
+            ['label' => 'Harga Tahunan / Yearly (Rp)', 'name' => 'price_yearly', 'type' => 'money'],
+            ['label' => 'Harga Sekali Beli / One-Time (Rp)', 'name' => 'price_one_time', 'type' => 'money'],
             ['label' => 'Is Active', 'name' => 'is_active', 'type' => 'radio', 'dataenum' => ['1' => 'Active', '0' => 'Inactive'], 'required' => true],
             ['label' => 'Description', 'name' => 'description', 'type' => 'textarea', 'width' => 'col-span-12'],
         ];
