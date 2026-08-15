@@ -10,6 +10,10 @@ const props = defineProps({
     type: String,
     default: 'Type content here...',
   },
+  height: {
+    type: String,
+    default: '200px',
+  },
   disabled: Boolean,
   readonly: Boolean,
 })
@@ -205,8 +209,9 @@ const addLink = () => {
       ref="editorRef"
       contenteditable="true"
       @input="handleInput"
+      :style="{ minHeight: height }"
       :class="[
-        'p-4 min-h-[140px] max-h-[400px] overflow-y-auto text-xs text-stone-900 dark:text-white focus:outline-none leading-relaxed prose dark:prose-invert max-w-none',
+        'p-4 max-h-[600px] overflow-y-auto text-xs text-stone-900 dark:text-white focus:outline-none leading-relaxed prose dark:prose-invert max-w-none',
         (disabled || readonly) ? 'bg-stone-100 dark:bg-white/5 cursor-not-allowed opacity-60' : ''
       ]"
     ></div>
@@ -216,7 +221,7 @@ const addLink = () => {
       v-show="isHtmlMode"
       :value="rawHtml"
       @input="handleRawInput"
-      rows="6"
+      :style="{ minHeight: height }"
       class="w-full p-4 font-mono text-xs text-stone-900 dark:text-white bg-stone-900 dark:bg-[#0c0b09] text-amber-400 focus:outline-none"
     ></textarea>
 

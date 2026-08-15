@@ -234,6 +234,7 @@ const submitForm = () => {
                   <WYSIWYGEditor
                     v-model="form[field.name]"
                     :placeholder="field.placeholder || 'Enter ' + field.label"
+                    :height="field.height || '200px'"
                     :disabled="is_detail || field.readonly || field.disabled"
                     :readonly="is_detail || field.readonly || field.disabled"
                   />
