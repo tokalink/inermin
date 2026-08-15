@@ -33,6 +33,8 @@ Route::group([
     Route::group(['middleware' => [InerminAuthMiddleware::class]], function () {
         Route::get('/', [InerminDashboardController::class, 'getIndex'])->name('inermin.dashboard');
         Route::get('/logout', [InerminAuthController::class, 'getLogout'])->name('inermin.logout');
+        Route::get('/profile', [InerminUsersController::class, 'getProfile'])->name('inermin.profile');
+        Route::post('/profile', [InerminUsersController::class, 'postSaveProfile']);
 
         // Built-in System Modules
         Route::get('/users', [InerminUsersController::class, 'getIndex']);

@@ -57,5 +57,89 @@ class InerminUsersController extends InerminController
             unset($postdata['password']);
         }
     }
+
+    public function getProfile()
+    {
+        $adminId = \Illuminate\Support\Facades\Session::get('admin_id');
+        if (!$adminId) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath('login'));
+        }
+
+        $user = DB::table('cms_users')->where('id', $adminId)->first();
+        if (!$user) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath());
+        }
+
+        $privilege = DB::table('cms_privileges')->where('id', $user->id_cms_privileges)->first();
+
+        return \Inertia\Inertia::render('Inermin/Profile/Edit', [
+            'page_title' => 'Profile & Security Settings',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'photo' => \Tokalink\Inermin\helpers\Inermin::myPhoto(),
+                'privilege_name' => $privilege ? $privilege->name : 'Administrator',
+                'created_at' => $user->created_at ? date('d M Y', strtotime($user->created_at)) : 'N/A',
+            ],
+            'action_url' => \Tokalink\Inermin\helpers\Inermin::adminPath('profile'),
+            'tab' => request('tab', 'profile'),
+        ]);
+    }
+
+    public function postSaveProfile(\Illuminate\Http\Request $request)
+    {
+        $adminId = \Illuminate\Support\Facades\Session::get('admin_id');
+        if (!$adminId) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath('login'));
+        }
+
+        $user = DB::table('cms_users')->where('id', $adminId)->first();
+        if (!$user) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath());
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:cms_users,email,' . $adminId,
+        ]);
+
+        $data = [
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'updated_at' => now(),
+        ];
+
+        // Handle Profile Photo Avatar Upload
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $path = $file->store('uploads/' . date('Y-m'), 'public');
+            $data['photo'] = 'storage/' . $path;
+            \Illuminate\Support\Facades\Session::put('admin_photo', asset('storage/' . $path));
+        }
+
+        // Handle Password Change if requested
+        if ($request->filled('new_password')) {
+            $request->validate([
+                'current_password' => 'required',
+                'new_password' => 'required|min:6',
+                'new_password_confirmation' => 'required|same:new_password',
+            ]);
+
+            if (!Hash::check($request->input('current_password'), $user->password)) {
+                return redirect()->back()->with('error', 'Current password is incorrect!');
+            }
+
+            $data['password'] = Hash::make($request->input('new_password'));
+        }
+
+        DB::table('cms_users')->where('id', $adminId)->update($data);
+
+        \Illuminate\Support\Facades\Session::put('admin_name', $data['name']);
+
+        \Tokalink\Inermin\helpers\Inermin::insertLog('Updated profile settings');
+
+        return redirect()->back()->with('success', 'Profile & security settings updated successfully!');
+    }
 }
 

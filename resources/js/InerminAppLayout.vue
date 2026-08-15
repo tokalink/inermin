@@ -444,18 +444,22 @@ onMounted(() => {
 
       <!-- User Profile Card -->
       <div class="p-3 border-t border-stone-200 dark:border-white/5 shrink-0">
-        <div class="flex items-center gap-3 p-2.5 rounded-xl bg-stone-100/60 dark:bg-white/5 border border-stone-200/50 dark:border-white/5">
+        <Link
+          :href="adminPath + '/profile'"
+          class="flex items-center gap-3 p-2.5 rounded-xl bg-stone-100/60 dark:bg-white/5 hover:bg-stone-200/60 dark:hover:bg-white/10 border border-stone-200/50 dark:border-white/5 transition group"
+          title="Edit Profile & Settings"
+        >
           <div class="relative shrink-0">
             <img :src="user.photo || '/vendor/inermin/avatar.svg'" @error="(e) => e.target.src = '/vendor/inermin/avatar.svg'" class="w-9 h-9 rounded-xl object-cover ring-2 ring-[rgba(var(--accent-rgb),0.3)]" alt="Avatar" />
             <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#15130f]"></div>
           </div>
           
           <div v-if="!isCollapsed || isMobileOpen" class="overflow-hidden leading-tight flex-1">
-            <h4 class="font-bold text-xs text-stone-900 dark:text-white truncate">{{ user.name }}</h4>
+            <h4 class="font-bold text-xs text-stone-900 dark:text-white group-hover:text-[rgb(var(--accent-rgb))] transition-colors truncate">{{ user.name }}</h4>
             <span class="text-[10px] text-stone-400 font-medium truncate block mt-0.5">{{ user.privilege_name }}</span>
           </div>
-          <i v-if="!isCollapsed || isMobileOpen" class="bi bi-chevron-expand text-stone-400 text-xs"></i>
-        </div>
+          <i v-if="!isCollapsed || isMobileOpen" class="bi bi-gear-fill text-stone-400 group-hover:text-[rgb(var(--accent-rgb))] text-xs transition"></i>
+        </Link>
       </div>
     </aside>
 
@@ -682,6 +686,24 @@ onMounted(() => {
                 <div class="px-4 py-2.5 border-b border-stone-100 dark:border-white/5">
                   <p class="text-xs font-bold text-stone-900 dark:text-white">{{ user.name }}</p>
                   <p class="text-[10px] font-bold tracking-wider uppercase mt-0.5" style="color: rgb(var(--accent-rgb));">{{ user.privilege_name }}</p>
+                </div>
+
+                <div class="py-1 border-b border-stone-100 dark:border-white/5 space-y-0.5">
+                  <Link
+                    :href="adminPath + '/profile'"
+                    class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5 rounded-xl transition"
+                  >
+                    <i class="bi bi-person-bounding-box text-sm"></i>
+                    <span>Edit Profile</span>
+                  </Link>
+
+                  <Link
+                    :href="adminPath + '/profile?tab=password'"
+                    class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5 rounded-xl transition"
+                  >
+                    <i class="bi bi-key-fill text-sm"></i>
+                    <span>Change Password</span>
+                  </Link>
                 </div>
 
                 <Link
