@@ -1,0 +1,122 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Tokalink\Inermin\controllers\InerminAuthController;
+use Tokalink\Inermin\controllers\InerminDashboardController;
+use Tokalink\Inermin\controllers\InerminUsersController;
+use Tokalink\Inermin\controllers\InerminPrivilegesController;
+use Tokalink\Inermin\controllers\InerminMenusController;
+use Tokalink\Inermin\controllers\InerminSettingsController;
+use Tokalink\Inermin\controllers\InerminModulsController;
+use Tokalink\Inermin\controllers\InerminLogsController;
+use Tokalink\Inermin\controllers\InerminApiController;
+use Tokalink\Inermin\controllers\InerminEmailController;
+use Tokalink\Inermin\controllers\InerminStatisticController;
+use Tokalink\Inermin\middleware\InerminAuthMiddleware;
+use Tokalink\Inermin\middleware\InerminShareInertiaData;
+
+$prefix = config('inermin.ADMIN_PATH', 'administrator');
+
+Route::group([
+    'prefix' => $prefix,
+    'middleware' => ['web', InerminShareInertiaData::class]
+], function () {
+    // Guest Routes
+    Route::get('/login', [InerminAuthController::class, 'getLogin'])->name('inermin.login');
+    Route::post('/login', [InerminAuthController::class, 'postLogin']);
+
+    // Protected Admin Routes
+    Route::group(['middleware' => [InerminAuthMiddleware::class]], function () {
+        Route::get('/', [InerminDashboardController::class, 'getIndex'])->name('inermin.dashboard');
+        Route::get('/logout', [InerminAuthController::class, 'getLogout'])->name('inermin.logout');
+
+        // Built-in System Modules
+        Route::get('/users', [InerminUsersController::class, 'getIndex']);
+        Route::get('/users/add', [InerminUsersController::class, 'getAdd']);
+        Route::post('/users/add', [InerminUsersController::class, 'postAddSave']);
+        Route::get('/users/edit/{id}', [InerminUsersController::class, 'getEdit']);
+        Route::post('/users/edit/{id}', [InerminUsersController::class, 'postEditSave']);
+        Route::get('/users/delete/{id}', [InerminUsersController::class, 'getDelete']);
+
+        Route::get('/privileges', [InerminPrivilegesController::class, 'getIndex']);
+        Route::get('/privileges/add', [InerminPrivilegesController::class, 'getAdd']);
+        Route::post('/privileges/add', [InerminPrivilegesController::class, 'postAddSave']);
+        Route::get('/privileges/edit/{id}', [InerminPrivilegesController::class, 'getEdit']);
+        Route::post('/privileges/edit/{id}', [InerminPrivilegesController::class, 'postEditSave']);
+        Route::get('/privileges/delete/{id}', [InerminPrivilegesController::class, 'getDelete']);
+
+        Route::get('/menus', [InerminMenusController::class, 'getIndex']);
+        Route::get('/menus/add', [InerminMenusController::class, 'getAdd']);
+        Route::post('/menus/add', [InerminMenusController::class, 'postAddSave']);
+        Route::post('/menus/save', [InerminMenusController::class, 'postSave']);
+        Route::post('/menus/save-sorting', [InerminMenusController::class, 'postSaveSorting']);
+        Route::get('/menus/edit/{id}', [InerminMenusController::class, 'getEdit']);
+        Route::post('/menus/edit/{id}', [InerminMenusController::class, 'postEditSave']);
+        Route::get('/menus/delete/{id}', [InerminMenusController::class, 'getDelete']);
+
+        Route::get('/settings', [InerminSettingsController::class, 'getIndex']);
+        Route::get('/settings/add', [InerminSettingsController::class, 'getAdd']);
+        Route::post('/settings/add', [InerminSettingsController::class, 'postAddSave']);
+        Route::get('/settings/edit/{id}', [InerminSettingsController::class, 'getEdit']);
+        Route::post('/settings/edit/{id}', [InerminSettingsController::class, 'postEditSave']);
+        Route::get('/settings/delete/{id}', [InerminSettingsController::class, 'getDelete']);
+
+        Route::get('/modules', [InerminModulsController::class, 'getIndex']);
+        Route::get('/modules/step1/{id?}', [InerminModulsController::class, 'getStep1']);
+        Route::post('/modules/step2', [InerminModulsController::class, 'postStep2']);
+        Route::get('/modules/step2/{id}', [InerminModulsController::class, 'getStep2']);
+        Route::post('/modules/step3', [InerminModulsController::class, 'postStep3']);
+        Route::get('/modules/step3/{id}', [InerminModulsController::class, 'getStep3']);
+        Route::post('/modules/step4', [InerminModulsController::class, 'postStep4']);
+        Route::get('/modules/step4/{id}', [InerminModulsController::class, 'getStep4']);
+        Route::post('/modules/finish', [InerminModulsController::class, 'postFinish']);
+        Route::get('/modules/delete/{id}', [InerminModulsController::class, 'getDelete']);
+
+        Route::get('/logs', [InerminLogsController::class, 'getIndex']);
+        Route::get('/logs/delete/{id}', [InerminLogsController::class, 'getDelete']);
+
+        Route::get('/api_generator', [InerminApiController::class, 'getIndex']);
+        Route::get('/api_generator/add', [InerminApiController::class, 'getAdd']);
+        Route::post('/api_generator/add', [InerminApiController::class, 'postAddSave']);
+        Route::get('/api_generator/edit/{id}', [InerminApiController::class, 'getEdit']);
+        Route::post('/api_generator/edit/{id}', [InerminApiController::class, 'postEditSave']);
+        Route::get('/api_generator/delete/{id}', [InerminApiController::class, 'getDelete']);
+
+        Route::get('/email_templates', [InerminEmailController::class, 'getIndex']);
+        Route::get('/email_templates/add', [InerminEmailController::class, 'getAdd']);
+        Route::post('/email_templates/add', [InerminEmailController::class, 'postAddSave']);
+        Route::get('/email_templates/edit/{id}', [InerminEmailController::class, 'getEdit']);
+        Route::post('/email_templates/edit/{id}', [InerminEmailController::class, 'postEditSave']);
+        Route::get('/email_templates/delete/{id}', [InerminEmailController::class, 'getDelete']);
+
+        Route::get('/statistic_builder', [InerminStatisticController::class, 'getIndex']);
+        Route::get('/statistic_builder/add', [InerminStatisticController::class, 'getAdd']);
+        Route::post('/statistic_builder/add', [InerminStatisticController::class, 'postAddSave']);
+        Route::get('/statistic_builder/edit/{id}', [InerminStatisticController::class, 'getEdit']);
+        Route::post('/statistic_builder/edit/{id}', [InerminStatisticController::class, 'postEditSave']);
+        Route::get('/statistic_builder/delete/{id}', [InerminStatisticController::class, 'getDelete']);
+    });
+});
+
+// Dynamic Custom Generated Modules Routes
+try {
+    if (\Illuminate\Support\Facades\Schema::hasTable('cms_moduls')) {
+        $modules = \Illuminate\Support\Facades\DB::table('cms_moduls')
+            ->where('path', '!=', '')
+            ->where('controller', '!=', '')
+            ->whereNotNull('path')
+            ->whereNotNull('controller')
+            ->where('is_protected', 0)
+            ->whereNull('deleted_at')
+            ->get();
+
+        foreach ($modules as $mod) {
+            if (!empty($mod->path) && !empty($mod->controller)) {
+                \Tokalink\Inermin\helpers\Inermin::routeController($mod->path, $mod->controller);
+            }
+        }
+    }
+} catch (\Exception $e) {
+    // Schema or table not ready fallback
+}
+
