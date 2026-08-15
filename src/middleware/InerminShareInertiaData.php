@@ -87,33 +87,43 @@ class InerminShareInertiaData
             $privId = Session::get('admin_privileges');
             $isSuperadmin = Session::get('admin_is_superadmin');
 
-            $query = DB::table('cms_menus')
-                ->where('is_active', 1)
-                ->where('is_dashboard', 0);
+            if ($isSuperadmin) {
+                $rawMenus = DB::table('cms_menus')
+                    ->where('is_active', 1)
+                    ->where('is_dashboard', 0)
+                    ->orderBy('sorting', 'asc')
+                    ->get();
+            } else {
+                // Fetch menus explicitly assigned to this privilege in cms_menus_privileges
+                $allowedMenuIds = DB::table('cms_menus_privileges')
+                    ->where('id_cms_privileges', $privId)
+                    ->pluck('id_cms_menus')
+                    ->toArray();
 
-            if (! $isSuperadmin) {
-                $query->where(function ($q) use ($privId) {
-                    $q->whereRaw("cms_menus.id IN (select id_cms_menus from cms_menus_privileges where id_cms_privileges = ?)", [$privId])
-                      ->orWhereRaw("cms_menus.path IN (
-                          select m.path from cms_moduls m 
-                          join cms_privileges_roles r on r.id_cms_moduls = m.id 
-                          where r.id_cms_privileges = ? and r.is_visible = 1
-                      )", [$privId])
-                      ->orWhereRaw("cms_menus.path IN (
-                          select concat(m.controller, 'GetIndex') from cms_moduls m 
-                          join cms_privileges_roles r on r.id_cms_moduls = m.id 
-                          where r.id_cms_privileges = ? and r.is_visible = 1
-                      )", [$privId]);
-                });
+                // Automatically include parent menu IDs for any allowed child menu
+                if (!empty($allowedMenuIds)) {
+                    $parentIds = DB::table('cms_menus')
+                        ->whereIn('id', $allowedMenuIds)
+                        ->where('parent_id', '>', 0)
+                        ->pluck('parent_id')
+                        ->toArray();
+                    
+                    $allowedMenuIds = array_unique(array_merge($allowedMenuIds, $parentIds));
+                }
+
+                $rawMenus = DB::table('cms_menus')
+                    ->where('is_active', 1)
+                    ->where('is_dashboard', 0)
+                    ->whereIn('id', $allowedMenuIds)
+                    ->orderBy('sorting', 'asc')
+                    ->get();
             }
 
-            $menus = $query->orderBy('sorting', 'asc')->get();
-
             $tree = [];
-            foreach ($menus as $m) {
+            foreach ($rawMenus as $m) {
                 $m->url = $this->parseMenuUrl($m);
                 if (! $m->parent_id) {
-                    $children = $menus->where('parent_id', $m->id)->values();
+                    $children = $rawMenus->where('parent_id', $m->id)->values();
                     foreach ($children as $c) {
                         $c->url = $this->parseMenuUrl($c);
                     }

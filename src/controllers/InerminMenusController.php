@@ -99,6 +99,14 @@ class InerminMenusController extends InerminController
                 'id_cms_menus' => $id,
                 'id_cms_privileges' => $privId,
             ]);
+
+            // Auto-assign parent menu if this is a child item
+            if ($parent_id > 0) {
+                DB::table('cms_menus_privileges')->updateOrInsert([
+                    'id_cms_menus' => $parent_id,
+                    'id_cms_privileges' => $privId,
+                ]);
+            }
         }
 
         return redirect(Inermin::adminPath('menus'))->with('success', 'Menu saved successfully!');
