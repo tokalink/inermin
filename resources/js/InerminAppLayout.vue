@@ -9,6 +9,30 @@ const adminPath = computed(() => '/' + (page.props.admin_path || 'administrator'
 const user = computed(() => page.props.auth?.user || {})
 const menu = computed(() => page.props.menu || [])
 const flash = computed(() => page.props.flash || {})
+const rawNotifications = computed(() => page.props.notifications || [])
+
+// Notification State & Actions
+const isNotificationsOpen = ref(false)
+const notificationItems = ref([])
+
+watch(rawNotifications, (newVal) => {
+  notificationItems.value = (newVal || []).map(item => ({
+    ...item,
+    is_read: item.is_read || 0
+  }))
+}, { immediate: true })
+
+const unreadCount = computed(() => {
+  return notificationItems.value.filter(n => !n.is_read).length
+})
+
+const markAllAsRead = () => {
+  notificationItems.value.forEach(n => n.is_read = 1)
+}
+
+const toggleNotification = (item) => {
+  item.is_read = 1
+}
 
 // Grouped Superadmin Built-in Menus (Matching d1.html)
 const adminGroupMenus = computed(() => [
@@ -37,14 +61,12 @@ const isMenuItemActive = (item) => {
   let rawUrl = item.url || item.path || ''
   if (!rawUrl || rawUrl === '#') return false
 
-  // Strip host domain (e.g. http://localhost:8000/administrator/absen -> /administrator/absen)
   let targetPath = rawUrl.replace(/^https?:\/\/[^\/]+/, '').split('?')[0]
 
   if (!targetPath.startsWith('/')) {
     targetPath = adminPath.value + '/' + targetPath
   }
 
-  // Strip trailing slashes
   targetPath = targetPath.replace(/\/+$/, '')
   const normCurrent = currentUrl.replace(/\/+$/, '')
 
@@ -55,29 +77,56 @@ const isMenuItemActive = (item) => {
   return normCurrent === targetPath || normCurrent.startsWith(targetPath + '/')
 }
 
-// Theme (Dark / Light) State
+// Parent Menu Submenu Accordion Open State
+const expandedMenus = ref({})
+
+const toggleSubmenu = (menuId) => {
+  expandedMenus.value[menuId] = !expandedMenus.value[menuId]
+}
+
+const isParentActiveOrExpanded = (item) => {
+  if (!item) return false
+  if (expandedMenus.value[item.id] !== undefined) {
+    return expandedMenus.value[item.id]
+  }
+  if (item.children && item.children.length) {
+    return item.children.some(c => isMenuItemActive(c))
+  }
+  return false
+}
+
+// Theme (Dark / Light) State matching d1.html (#0c0b09 obsidian dark)
 const isDark = ref(false)
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  if (isDark.value) {
+
+const applyTheme = (dark) => {
+  isDark.value = dark
+  if (dark) {
     document.documentElement.classList.add('dark')
+    document.body.style.backgroundColor = '#0c0b09'
+    document.body.style.color = '#e7e5e4'
     localStorage.setItem('inermin_theme', 'dark')
   } else {
     document.documentElement.classList.remove('dark')
+    document.body.style.backgroundColor = '#f7f5f1'
+    document.body.style.color = '#1c1917'
     localStorage.setItem('inermin_theme', 'light')
   }
+}
+
+const toggleTheme = () => {
+  applyTheme(!isDark.value)
 }
 
 // Accent Color State (amber, emerald, crimson, ocean, violet, bronze)
 const accentColor = ref('amber')
 const isColorPickerOpen = ref(false)
 const colorSwatches = [
-  { name: 'amber', label: 'Amber', gradient: 'from-amber-500 to-amber-700' },
-  { name: 'emerald', label: 'Emerald', gradient: 'from-emerald-500 to-emerald-700' },
-  { name: 'crimson', label: 'Crimson', gradient: 'from-red-500 to-red-700' },
-  { name: 'ocean', label: 'Ocean', gradient: 'from-cyan-500 to-cyan-700' },
-  { name: 'violet', label: 'Violet', gradient: 'from-purple-500 to-purple-700' },
-  { name: 'bronze', label: 'Bronze', gradient: 'from-amber-600 to-amber-800' },
+  { name: 'amber', label: 'Amber', style: 'background: linear-gradient(135deg, #f59e0b, #b45309);' },
+  { name: 'emerald', label: 'Emerald', style: 'background: linear-gradient(135deg, #10b981, #047857);' },
+  { name: 'crimson', label: 'Crimson', style: 'background: linear-gradient(135deg, #ef4444, #b91c1c);' },
+  { name: 'ocean', label: 'Ocean', style: 'background: linear-gradient(135deg, #06b6d4, #0e7490);' },
+  { name: 'violet', label: 'Violet', style: 'background: linear-gradient(135deg, #8b5cf6, #6d28d9);' },
+  { name: 'bronze', label: 'Bronze', style: 'background: linear-gradient(135deg, #d97706, #92400e);' },
 ]
 
 const setAccent = (color) => {
@@ -102,7 +151,11 @@ const filteredSystemGroup = computed(() => filterGroup(systemGroupMenus.value))
 const filteredCustomMenu = computed(() => {
   if (!menuSearchQuery.value.trim()) return menu.value
   const q = menuSearchQuery.value.toLowerCase()
-  return menu.value.filter(m => m.name.toLowerCase().includes(q))
+  return menu.value.filter(m => {
+    const matchParent = m.name.toLowerCase().includes(q)
+    const matchChild = m.children && m.children.some(c => c.name.toLowerCase().includes(q))
+    return matchParent || matchChild
+  })
 })
 
 // Collapsible Sidebar & Mobile State
@@ -158,15 +211,10 @@ const handleKeyDown = (e) => {
 }
 
 onMounted(() => {
-  const savedTheme = localStorage.getItem('inermin_theme') || page.props.default_theme || 'light'
-  isDark.value = savedTheme === 'dark'
-  if (isDark.value) {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
+  const savedTheme = localStorage.getItem('inermin_theme') || page.props.default_theme || 'dark'
+  applyTheme(savedTheme === 'dark')
 
-  const savedAccent = localStorage.getItem('inermin_accent') || 'amber'
+  const savedAccent = localStorage.getItem('inermin_accent') || page.props.primary_color || 'amber'
   accentColor.value = savedAccent
   document.documentElement.setAttribute('data-accent', savedAccent)
 
@@ -224,16 +272,16 @@ onMounted(() => {
 
       <!-- Sidebar Search Bar -->
       <div v-if="!isCollapsed || isMobileOpen" class="px-4 pt-4 pb-2 shrink-0">
-        <div class="relative">
+        <div class="relative flex items-center">
           <input
             ref="searchInputRef"
             v-model="menuSearchQuery"
             type="text"
             placeholder="Search menu..."
-            class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200/60 dark:border-white/5 rounded-xl pl-9 pr-9 py-2.5 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition"
+            class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200/60 dark:border-white/5 rounded-xl pl-9 pr-14 py-2 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition"
           />
-          <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs"></i>
-          <kbd class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-stone-400 bg-white dark:bg-white/5 border border-stone-200 dark:border-white/10 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+          <i class="bi bi-search absolute left-3 text-stone-400 text-xs pointer-events-none"></i>
+          <kbd class="absolute right-2.5 text-[10px] text-stone-400 bg-white dark:bg-white/5 border border-stone-200 dark:border-white/10 px-1.5 py-0.5 rounded font-mono pointer-events-none">⌘K</kbd>
         </div>
       </div>
 
@@ -258,9 +306,46 @@ onMounted(() => {
               </Link>
             </li>
 
-            <!-- Custom Dynamic User Generated Menus -->
+            <!-- Custom Dynamic User Generated Menus (Supports Parent & Child Submenus) -->
             <template v-for="item in filteredCustomMenu" :key="item.id">
-              <li>
+              
+              <!-- IF PARENT WITH CHILDREN SUBMENU -->
+              <li v-if="item.children && item.children.length" class="space-y-1">
+                <div
+                  @click="toggleSubmenu(item.id)"
+                  :class="[
+                    'nav-item group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer select-none',
+                    isParentActiveOrExpanded(item) ? 'text-[rgb(var(--accent-rgb))] font-bold bg-stone-100/50 dark:bg-white/[0.03]' : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                  ]"
+                >
+                  <div class="flex items-center gap-3 truncate">
+                    <i :class="[item.icon || 'bi bi-folder2-open', 'nav-icon text-base shrink-0']"></i>
+                    <span v-if="!isCollapsed || isMobileOpen" class="truncate">{{ item.name }}</span>
+                  </div>
+                  <i v-if="!isCollapsed || isMobileOpen" :class="['bi text-xs transition-transform duration-200 text-stone-400', isParentActiveOrExpanded(item) ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
+                </div>
+
+                <!-- Child Submenu Items -->
+                <ul v-if="isParentActiveOrExpanded(item) && (!isCollapsed || isMobileOpen)" class="pl-3.5 space-y-1 border-l-2 border-stone-200/80 dark:border-white/10 ml-5 my-1">
+                  <li v-for="child in item.children" :key="child.id">
+                    <Link
+                      :href="child.url || (adminPath + '/' + child.path)"
+                      :class="[
+                        'nav-item group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200',
+                        isMenuItemActive(child)
+                          ? 'active text-[rgb(var(--accent-rgb))] font-bold'
+                          : 'text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white'
+                      ]"
+                    >
+                      <i :class="[child.icon || 'bi bi-circle-fill', 'text-[7px] shrink-0']"></i>
+                      <span class="truncate">{{ child.name }}</span>
+                    </Link>
+                  </li>
+                </ul>
+              </li>
+
+              <!-- SINGLE TOP-LEVEL MENU ITEM -->
+              <li v-else>
                 <Link
                   :href="item.url || (adminPath + '/' + item.path)"
                   :class="[
@@ -274,6 +359,7 @@ onMounted(() => {
                   <span v-if="!isCollapsed || isMobileOpen" class="truncate">{{ item.name }}</span>
                 </Link>
               </li>
+
             </template>
           </ul>
         </div>
@@ -432,7 +518,7 @@ onMounted(() => {
             <button
               @click="isColorPickerOpen = !isColorPickerOpen"
               class="p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-white/5 flex items-center gap-2 transition"
-              title="Change Accent Color"
+              title="Theme Color Accent"
             >
               <span class="w-5 h-5 rounded-full shadow-sm" style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)));"></span>
               <i class="bi bi-chevron-down text-xs text-stone-400 hidden sm:block"></i>
@@ -457,7 +543,8 @@ onMounted(() => {
                       'w-9 h-9 rounded-full transition-transform duration-200 flex items-center justify-center border-2',
                       accentColor === swatch.name ? 'scale-110 border-stone-900 dark:border-white shadow-md' : 'border-transparent hover:scale-105'
                     ]"
-                    :style="`background: linear-gradient(135deg, var(--accent-soft), var(--accent-deep))`"
+                    :style="swatch.style"
+                    :title="swatch.label"
                   >
                     <i v-if="accentColor === swatch.name" class="bi bi-check-lg text-white text-sm"></i>
                   </button>
@@ -476,11 +563,104 @@ onMounted(() => {
             <i v-else class="bi bi-moon-stars-fill text-base text-stone-700"></i>
           </button>
 
-          <!-- Notifications -->
-          <button class="relative p-2.5 rounded-xl text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition">
-            <i class="bi bi-bell text-base"></i>
-            <span class="absolute top-2 right-2 w-2 h-2 rounded-full" style="background: rgb(var(--accent-rgb));"></span>
-          </button>
+          <!-- Interactive Notification Bell Dropdown -->
+          <div class="relative">
+            <button
+              @click="isNotificationsOpen = !isNotificationsOpen"
+              class="relative p-2.5 rounded-xl text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-white/5 transition focus:outline-none"
+              title="Notifications"
+            >
+              <i class="bi bi-bell text-base"></i>
+              <span
+                v-if="unreadCount > 0"
+                class="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 rounded-full text-[9px] font-extrabold text-white flex items-center justify-center border-2 border-white dark:border-[#0c0b09]"
+                style="background: rgb(var(--accent-rgb));"
+              >
+                {{ unreadCount > 9 ? '9+' : unreadCount }}
+              </span>
+            </button>
+
+            <!-- Notifications Dropdown Panel -->
+            <Transition name="dropdown">
+              <div
+                v-if="isNotificationsOpen"
+                class="absolute right-0 mt-2 w-80 sm:w-96 card rounded-2xl p-0 shadow-2xl z-50 overflow-hidden border border-stone-200 dark:border-white/10"
+              >
+                <!-- Panel Header -->
+                <div class="p-4 border-b border-stone-100 dark:border-white/5 flex items-center justify-between bg-stone-50/50 dark:bg-white/[0.02]">
+                  <div class="flex items-center gap-2">
+                    <span class="font-display font-bold text-sm text-stone-900 dark:text-white">Notifications</span>
+                    <span
+                      v-if="unreadCount > 0"
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                      style="background: rgb(var(--accent-rgb));"
+                    >
+                      {{ unreadCount }} new
+                    </span>
+                  </div>
+
+                  <button
+                    v-if="unreadCount > 0"
+                    @click="markAllAsRead"
+                    class="text-[11px] font-bold text-[rgb(var(--accent-rgb))] hover:underline flex items-center gap-1"
+                  >
+                    <i class="bi bi-check2-all"></i>
+                    <span>Mark all read</span>
+                  </button>
+                </div>
+
+                <!-- Notifications List -->
+                <div class="max-h-80 overflow-y-auto divide-y divide-stone-100 dark:divide-white/5 custom-scrollbar">
+                  <template v-if="notificationItems.length">
+                    <div
+                      v-for="item in notificationItems"
+                      :key="item.id"
+                      @click="toggleNotification(item)"
+                      :class="[
+                        'p-3.5 flex items-start gap-3 transition cursor-pointer hover:bg-stone-50 dark:hover:bg-white/[0.03]',
+                        !item.is_read ? 'bg-amber-500/[0.04] dark:bg-[rgba(var(--accent-rgb),0.06)]' : ''
+                      ]"
+                    >
+                      <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 text-sm" style="background: rgba(var(--accent-rgb), 0.15); color: rgb(var(--accent-rgb));">
+                        <i :class="item.icon || 'bi bi-bell-fill'"></i>
+                      </div>
+
+                      <div class="flex-1 overflow-hidden leading-tight space-y-1">
+                        <p class="text-xs font-semibold text-stone-800 dark:text-stone-200 line-clamp-2">
+                          {{ item.content }}
+                        </p>
+                        <p class="text-[10px] text-stone-400 font-medium">
+                          {{ item.created_at }}
+                        </p>
+                      </div>
+
+                      <span v-if="!item.is_read" class="w-2 h-2 rounded-full shrink-0 mt-1.5" style="background: rgb(var(--accent-rgb));"></span>
+                    </div>
+                  </template>
+
+                  <!-- Empty State -->
+                  <div v-else class="p-8 text-center space-y-2">
+                    <i class="bi bi-bell-slash text-2xl text-stone-400"></i>
+                    <p class="text-xs font-bold text-stone-700 dark:text-stone-300">All caught up!</p>
+                    <p class="text-[11px] text-stone-400">No new system notifications right now.</p>
+                  </div>
+                </div>
+
+                <!-- Panel Footer -->
+                <div class="p-2.5 text-center border-t border-stone-100 dark:border-white/5 bg-stone-50/50 dark:bg-white/[0.02]">
+                  <Link
+                    :href="adminPath + '/logs'"
+                    @click="isNotificationsOpen = false"
+                    class="text-xs font-bold text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition inline-flex items-center gap-1.5"
+                  >
+                    <span>View all system activity logs</span>
+                    <i class="bi bi-arrow-right"></i>
+                  </Link>
+                </div>
+
+              </div>
+            </Transition>
+          </div>
 
           <div class="w-px h-6 bg-stone-200 dark:bg-white/10 hidden sm:block"></div>
 
@@ -593,21 +773,38 @@ onMounted(() => {
   --accent-deep: 146, 64, 14;
 }
 
+html, body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  background-color: #f7f5f1;
+  color: #1c1917;
+}
+
+.dark body {
+  background-color: #0c0b09 !important;
+  color: #e7e5e4 !important;
+}
+
 .font-display {
   font-family: 'Space Grotesk', sans-serif;
 }
 
-/* Background Canvas Gradients */
+/* Background Canvas Gradients matching d1.html */
 .bg-canvas {
   background-image:
     radial-gradient(circle at 12% 8%, rgba(var(--accent-rgb), 0.10), transparent 35%),
     radial-gradient(circle at 88% 92%, rgba(var(--accent-soft), 0.08), transparent 40%);
+  background-attachment: fixed;
 }
 
 .dark .bg-canvas {
   background-image:
     radial-gradient(circle at 12% 8%, rgba(var(--accent-rgb), 0.18), transparent 35%),
     radial-gradient(circle at 88% 92%, rgba(var(--accent-soft), 0.10), transparent 40%);
+  background-attachment: fixed;
 }
 
 /* Glassmorphism Header */
@@ -616,7 +813,7 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
-/* Cards */
+/* Cards matching d1.html (#15130f obsidian card) */
 .card {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -624,9 +821,9 @@ onMounted(() => {
 }
 
 .dark .card {
-  background: #15130f;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  background: #15130f !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Sidebar Nav Indicators */

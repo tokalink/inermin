@@ -3,28 +3,25 @@
 namespace Tokalink\Inermin\controllers;
 
 use App\Http\Controllers\Controller;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Rap2hpoutre\FastExcel\FastExcel;
 use Tokalink\Inermin\helpers\Inermin;
 
 class InerminController extends Controller
 {
-    public function cbInit()
-    {
-    }
+    public $data_inputan;
+    public $columns_table;
 
-    public $data_inputan = [];
-    public $columns = [];
-    public $form = [];
-    public $col = [];
-    public $title_field = 'id';
+    // Configuration Properties matching CRUDBooster
+    public $table = '';
+    public $primary_key = 'id';
+    public $title_field = '';
     public $limit = 20;
     public $orderby = 'id,desc';
-    public $table;
-    public $primary_key = 'id';
 
     public $button_add = true;
     public $button_edit = true;
@@ -35,89 +32,106 @@ class InerminController extends Controller
     public $button_export = true;
     public $button_import = true;
     public $button_bulk_action = true;
-    public $button_action_style = 'button_icon';
+    public $button_action_style = 'button_dropdown'; // button_dropdown, button_icon
 
+    public $col = [];
+    public $form = [];
     public $sub_module = [];
     public $addaction = [];
-    public $button_selected = [];
-    public $alert = [];
     public $index_button = [];
-    public $table_row_color = [];
+    public $button_selected = [];
     public $index_statistic = [];
-    public $script_js = null;
-    public $pre_index_html = null;
-    public $post_index_html = null;
-    public $style_css = null;
-    public $load_js = [];
-    public $load_css = [];
+    public $alert = [];
 
     public function __construct()
     {
-        $this->cbInit();
+        if (method_exists($this, 'cbInit')) {
+            $this->cbInit();
+        }
     }
-    // Hooks
-    public function hook_query_index(&$query) {}
-    public function hook_row_index($column_index, &$column_value) {}
-    public function hook_before_add(&$postdata) {}
-    public function hook_after_add($id) {}
-    public function hook_before_edit(&$postdata, $id) {}
-    public function hook_after_edit($id) {}
-    public function hook_before_delete($id) {}
-    public function hook_after_delete($id) {}
-    public function actionButtonSelected($id_selected, $button_name) {}
 
-    public function getIndex()
+    /**
+     * Process $this->form schema and automatically fetch datatable relationship options
+     */
+    protected function processFormSchema()
     {
-        $request = request();
-        $query = DB::table($this->table);
+        $forms = $this->form;
+        foreach ($forms as &$f) {
+            if (!empty($f['datatable']) && empty($f['dataenum'])) {
+                $rawDatatable = explode(',', $f['datatable']);
+                $table = trim($rawDatatable[0]);
+                $column = trim($rawDatatable[1] ?? 'name');
+                $valKey = $f['datatable_value'] ?? 'id';
+                $where = $f['datatable_where'] ?? null;
+                $format = $f['datatable_format'] ?? null;
 
-        // Apply Query Index Hook
-        $this->hook_query_index($query);
-
-        // Search
-        if ($search = $request->input('q')) {
-            $query->where(function ($q) use ($search) {
-                foreach ($this->col as $col) {
-                    if (isset($col['name'])) {
-                        $q->orWhere($this->table . '.' . $col['name'], 'like', "%{$search}%");
+                if (Schema::hasTable($table)) {
+                    $query = DB::table($table);
+                    if ($where) {
+                        $query->whereRaw($where);
                     }
+
+                    if ($format) {
+                        $query->select($valKey . ' as value', DB::raw("CONCAT($format) as label"));
+                    } else {
+                        $query->select($valKey . ' as value', $column . ' as label');
+                    }
+
+                    $options = $query->get()->map(function ($r) {
+                        return ['value' => $r->value, 'label' => $r->label];
+                    })->toArray();
+
+                    $f['dataenum'] = $options;
                 }
-            });
+            }
+        }
+        return $forms;
+    }
+
+    /**
+     * Datagrid index page
+     */
+    public function getIndex(Request $request = null)
+    {
+        $request = $request ?: request();
+
+        if (!Inermin::isView()) {
+            return redirect('/' . config('inermin.ADMIN_PATH', 'administrator'))
+                ->with('error', 'Access Denied!');
         }
 
-        // Filter Column (CRUDBooster style advanced filter)
-        if ($filter_column = $request->input('filter_column')) {
-            $query->where(function ($w) use ($filter_column) {
-                foreach ($filter_column as $colName => $fc) {
-                    $value = $fc['value'] ?? null;
-                    $type = $fc['type'] ?? 'like';
+        $query = DB::table($this->table);
 
-                    if ($type === 'empty') {
-                        $w->whereNull($this->table . '.' . $colName)->orWhere($this->table . '.' . $colName, '');
-                        continue;
-                    }
+        // Process automatic Joins for col datatable definitions
+        $selects = [$this->table . '.*'];
+        foreach ($this->col as $col) {
+            if (!empty($col['datatable'])) {
+                $rawDatatable = explode(',', $col['datatable']);
+                $relTable = trim($rawDatatable[0]);
+                $relColumn = trim($rawDatatable[1] ?? 'name');
+                $relKey = $col['datatable_value'] ?? 'id';
+                $fieldName = $col['name'];
+                $aliasName = $fieldName . '_label';
 
-                    if ($value === null || $value === '' || $type === '') {
-                        continue;
-                    }
+                if (Schema::hasTable($relTable)) {
+                    $query->leftJoin($relTable, $relTable . '.' . $relKey, '=', $this->table . '.' . $fieldName);
+                    $selects[] = $relTable . '.' . $relColumn . ' as ' . $aliasName;
+                }
+            }
+        }
+        $query->select($selects);
 
-                    switch ($type) {
-                        case 'like':
-                        case 'not like':
-                            $w->where($this->table . '.' . $colName, $type, '%' . $value . '%');
-                            break;
-                        case 'in':
-                        case 'not in':
-                            $vals = is_array($value) ? $value : array_map('trim', explode(',', $value));
-                            if ($type === 'in') {
-                                $w->whereIn($this->table . '.' . $colName, $vals);
-                            } else {
-                                $w->whereNotIn($this->table . '.' . $colName, $vals);
-                            }
-                            break;
-                        default:
-                            $w->where($this->table . '.' . $colName, $type, $value);
-                            break;
+        // Search Filter
+        if ($q = $request->input('q')) {
+            $query->where(function ($w) use ($q) {
+                foreach ($this->col as $idx => $col) {
+                    $field = $col['name'] ?? null;
+                    if ($field) {
+                        if ($idx == 0) {
+                            $w->where($this->table . '.' . $field, 'like', "%{$q}%");
+                        } else {
+                            $w->orWhere($this->table . '.' . $field, 'like', "%{$q}%");
+                        }
                     }
                 }
             });
@@ -127,20 +141,30 @@ class InerminController extends Controller
         if ($orderby = $request->input('orderby', $this->orderby)) {
             $orderParts = explode(',', $orderby);
             if (count($orderParts) == 2) {
-                $query->orderBy($orderParts[0], $orderParts[1]);
+                $query->orderBy($this->table . '.' . $orderParts[0], $orderParts[1]);
             }
         } else {
-            $query->orderBy($this->primary_key, 'desc');
+            $query->orderBy($this->table . '.' . $this->primary_key, 'desc');
         }
 
         $limit = $request->input('limit', $this->limit);
         $result = $query->paginate($limit)->withQueryString();
 
-        // Process row index hooks & column formatting
+        // Process callbacks & column formatting
         $items = $result->items();
         foreach ($items as &$row) {
             foreach ($this->col as $idx => $col) {
                 $fieldName = $col['name'] ?? null;
+                $aliasName = $fieldName . '_label';
+                if (isset($row->{$aliasName}) && $row->{$aliasName} !== null) {
+                    $row->{$fieldName} = $row->{$aliasName};
+                }
+
+                // Execute PHP Callback Closure if defined in $col
+                if (isset($col['callback']) && is_callable($col['callback'])) {
+                    $row->{$fieldName} = call_user_func($col['callback'], $row);
+                }
+
                 if ($fieldName && isset($row->{$fieldName})) {
                     $val = $row->{$fieldName};
                     $this->hook_row_index($idx, $val);
@@ -149,11 +173,19 @@ class InerminController extends Controller
             }
         }
 
+        // Clean columns array for Inertia JSON serialization (strip Closures)
+        $cleanColumns = array_map(function ($col) {
+            if (isset($col['callback'])) {
+                unset($col['callback']);
+            }
+            return $col;
+        }, $this->col);
+
         return Inertia::render('Inermin/Datagrid', [
             'page_title' => ucwords(str_replace('_', ' ', $this->table)),
             'table_name' => $this->table,
             'primary_key' => $this->primary_key,
-            'columns' => $this->col,
+            'columns' => $cleanColumns,
             'data' => $result,
             'filters' => $request->only(['q', 'orderby', 'limit', 'filter_column']),
             'permissions' => [
@@ -183,12 +215,14 @@ class InerminController extends Controller
             return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
         }
 
+        $processedForm = $this->processFormSchema();
+
         return Inertia::render('Inermin/Form', [
             'page_title' => 'Add ' . ucwords(str_replace('_', ' ', $this->table)),
             'table_name' => $this->table,
             'primary_key' => $this->primary_key,
-            'form_schema' => $this->form,
-            'forms' => $this->form,
+            'form_schema' => $processedForm,
+            'forms' => $processedForm,
             'row' => null,
             'action_url' => Inermin::mainpath('add'),
         ]);
@@ -204,8 +238,14 @@ class InerminController extends Controller
         $data = [];
         foreach ($this->form as $f) {
             $name = $f['name'] ?? null;
-            if ($name && $request->has($name)) {
-                $data[$name] = $request->input($name);
+            if ($name) {
+                if ($request->hasFile($name)) {
+                    $file = $request->file($name);
+                    $path = $file->store('uploads/' . date('Y-m'), 'public');
+                    $data[$name] = 'storage/' . $path;
+                } elseif ($request->has($name)) {
+                    $data[$name] = $request->input($name);
+                }
             }
         }
 
@@ -236,12 +276,14 @@ class InerminController extends Controller
         $row = DB::table($this->table)->where($this->primary_key, $id)->first();
         if (!$row) return redirect(Inermin::mainpath())->with('error', 'Record not found!');
 
+        $processedForm = $this->processFormSchema();
+
         return Inertia::render('Inermin/Form', [
             'page_title' => 'Edit ' . ucwords(str_replace('_', ' ', $this->table)),
             'table_name' => $this->table,
             'primary_key' => $this->primary_key,
-            'form_schema' => $this->form,
-            'forms' => $this->form,
+            'form_schema' => $processedForm,
+            'forms' => $processedForm,
             'row' => $row,
             'action_url' => Inermin::mainpath('edit/' . $id),
         ]);
@@ -253,16 +295,19 @@ class InerminController extends Controller
         if (!$this->button_edit || !Inermin::isUpdate()) {
             return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
         }
-        if (!$id) {
-            return redirect(Inermin::mainpath());
-        }
 
         $request = request();
         $data = [];
         foreach ($this->form as $f) {
             $name = $f['name'] ?? null;
-            if ($name && $request->has($name)) {
-                $data[$name] = $request->input($name);
+            if ($name) {
+                if ($request->hasFile($name)) {
+                    $file = $request->file($name);
+                    $path = $file->store('uploads/' . date('Y-m'), 'public');
+                    $data[$name] = 'storage/' . $path;
+                } elseif ($request->has($name)) {
+                    $data[$name] = $request->input($name);
+                }
             }
         }
 
@@ -286,18 +331,24 @@ class InerminController extends Controller
         if (!$this->button_detail || !Inermin::isRead()) {
             return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
         }
-        if (!$id) {
-            return redirect(Inermin::mainpath());
-        }
 
         $row = DB::table($this->table)->where($this->primary_key, $id)->first();
         if (!$row) return redirect(Inermin::mainpath())->with('error', 'Record not found!');
 
-        return Inertia::render('Inermin/Detail', [
+        $processedForm = $this->processFormSchema();
+
+        return Inertia::render('Inermin/Form', [
             'page_title' => 'Detail ' . ucwords(str_replace('_', ' ', $this->table)),
-            'form_schema' => $this->form,
+            'table_name' => $this->table,
+            'primary_key' => $this->primary_key,
+            'form_schema' => array_map(function ($f) {
+                $f['readonly'] = true;
+                return $f;
+            }, $processedForm),
+            'forms' => $processedForm,
             'row' => $row,
-            'back_url' => Inermin::mainpath(),
+            'is_detail' => true,
+            'action_url' => '#',
         ]);
     }
 
@@ -307,132 +358,248 @@ class InerminController extends Controller
         if (!$this->button_delete || !Inermin::isDelete()) {
             return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
         }
-        if (!$id) {
-            return redirect(Inermin::mainpath());
-        }
 
         $this->hook_before_delete($id);
-
         DB::table($this->table)->where($this->primary_key, $id)->delete();
-
         $this->hook_after_delete($id);
-        Inermin::insertLog("Deleted data at " . $this->table . " ID " . $id);
 
-        return redirect()->back()->with('success', 'Data deleted successfully');
+        Inermin::insertLog('Deleted record #' . $id . ' in table ' . $this->table);
+
+        return redirect(Inermin::mainpath())->with('success', 'Data deleted successfully!');
     }
 
-    public function postActionSelected()
-    {
-        $request = request();
-        $id_selected = $request->input('id_selected', []);
-        $button_name = $request->input('button_name');
-
-        if ($button_name === 'delete') {
-            foreach ($id_selected as $id) {
-                $this->hook_before_delete($id);
-                DB::table($this->table)->where($this->primary_key, $id)->delete();
-                $this->hook_after_delete($id);
-            }
-            Inermin::insertLog("Bulk deleted data at " . $this->table);
-            return redirect()->back()->with('success', 'Selected data deleted successfully');
-        } else {
-            $this->actionButtonSelected($id_selected, $button_name);
-            return redirect()->back()->with('success', 'Action executed successfully');
-        }
-    }
-
+    /**
+     * Advanced Data Export (XLSX, PDF via Dompdf, CSV) with Column Selection
+     */
     public function getExportData()
     {
+        return $this->postExportData();
+    }
+
+    public function postExportData()
+    {
         if (!$this->button_export) {
-            return redirect(Inermin::mainpath())->with('error', 'Export access denied!');
+            return redirect(Inermin::mainpath())->with('error', 'Export disabled!');
         }
 
-        $filename = $this->table . '_' . date('Y-m-d_H-i-s') . '.xlsx';
-        $query = DB::table($this->table);
-
         $request = request();
-        if ($request->has('filter_column')) {
-            $filters = $request->input('filter_column');
-            if (is_array($filters)) {
-                foreach ($filters as $key => $filter) {
-                    $type = $filter['type'] ?? 'like';
-                    $val = $filter['value'] ?? null;
-                    if ($val !== null && $val !== '') {
-                        if ($type === 'like') {
-                            $query->where($key, 'like', '%' . $val . '%');
-                        } elseif ($type === '=') {
-                            $query->where($key, '=', $val);
+        $fileformat = strtolower($request->input('fileformat', 'xlsx'));
+        $paperSize = strtolower($request->input('paper_size', 'a4'));
+        $pageOrientation = strtolower($request->input('page_orientation', 'landscape'));
+        $customFilename = trim($request->input('filename', ''));
+        $selectedColumns = $request->input('columns', []);
+
+        if (is_string($selectedColumns)) {
+            $selectedColumns = array_filter(explode(',', $selectedColumns));
+        }
+
+        // Determine columns to export
+        $exportCols = [];
+        if (!empty($selectedColumns)) {
+            foreach ($this->col as $c) {
+                if (in_array($c['name'], $selectedColumns)) {
+                    $exportCols[] = $c;
+                }
+            }
+        }
+        if (empty($exportCols)) {
+            $exportCols = $this->col;
+        }
+
+        // Build Data Query with Joins
+        $query = DB::table($this->table);
+        $selects = [$this->table . '.*'];
+        foreach ($exportCols as $col) {
+            if (!empty($col['datatable'])) {
+                $rawDatatable = explode(',', $col['datatable']);
+                $relTable = trim($rawDatatable[0]);
+                $relColumn = trim($rawDatatable[1] ?? 'name');
+                $relKey = $col['datatable_value'] ?? 'id';
+                $fieldName = $col['name'];
+                $aliasName = $fieldName . '_label';
+
+                if (Schema::hasTable($relTable)) {
+                    $query->leftJoin($relTable, $relTable . '.' . $relKey, '=', $this->table . '.' . $fieldName);
+                    $selects[] = $relTable . '.' . $relColumn . ' as ' . $aliasName;
+                }
+            }
+        }
+        $query->select($selects);
+
+        if ($q = $request->input('q')) {
+            $query->where(function ($w) use ($q, $exportCols) {
+                foreach ($exportCols as $idx => $col) {
+                    $field = $col['name'] ?? null;
+                    if ($field) {
+                        if ($idx == 0) {
+                            $w->where($this->table . '.' . $field, 'like', "%{$q}%");
+                        } else {
+                            $w->orWhere($this->table . '.' . $field, 'like', "%{$q}%");
                         }
                     }
                 }
-            }
+            });
         }
 
-        $data = $query->get();
+        $data = $query->orderBy($this->primary_key, 'desc')->get();
 
-        if (class_exists(\Rap2hpoutre\FastExcel\FastExcel::class)) {
-            return (new \Rap2hpoutre\FastExcel\FastExcel($data))->download($filename);
-        }
-
-        $headers = [
-            "Content-type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=" . str_replace('.xlsx', '.csv', $filename),
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0"
-        ];
-
-        $callback = function() use ($data) {
-            $file = fopen('php://output', 'w');
-            if (count($data) > 0) {
-                fputcsv($file, array_keys((array) $data[0]));
-                foreach ($data as $row) {
-                    fputcsv($file, (array) $row);
+        // Process callbacks for raw data
+        foreach ($data as &$row) {
+            foreach ($exportCols as $col) {
+                $fieldName = $col['name'] ?? null;
+                $aliasName = $fieldName . '_label';
+                if (isset($row->{$aliasName}) && $row->{$aliasName} !== null) {
+                    $row->{$fieldName} = $row->{$aliasName};
+                }
+                if (isset($col['callback']) && is_callable($col['callback'])) {
+                    $row->{$fieldName} = call_user_func($col['callback'], $row);
                 }
             }
-            fclose($file);
-        };
+        }
 
-        return response()->stream($callback, 200, $headers);
+        $filename = $customFilename ?: ($this->table . '_export_' . date('Y-m-d_H-i-s'));
+        $filename = str_replace(['/', '\\', ' '], '_', $filename);
+
+        // PDF Export via Dompdf
+        if ($fileformat === 'pdf') {
+            $title = ucwords(str_replace('_', ' ', $this->table)) . ' Report';
+            $html = '
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>' . htmlspecialchars($title) . '</title>
+                <style>
+                    body { font-family: sans-serif; font-size: 10px; color: #1e293b; margin: 0; padding: 0; }
+                    .header { margin-bottom: 15px; text-align: center; border-b: 2px solid #0284c7; padding-bottom: 8px; }
+                    .header h2 { margin: 0; font-size: 16px; text-transform: uppercase; color: #0f172a; }
+                    .header p { margin: 4px 0 0 0; color: #64748b; font-size: 9px; font-weight: bold; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th { background-color: #0f172a; color: #ffffff; padding: 6px 8px; text-align: left; font-size: 9px; font-weight: bold; text-transform: uppercase; border: 1px solid #334155; }
+                    td { padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 8.5px; word-wrap: break-word; vertical-align: top; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                    .footer { position: fixed; bottom: -10px; left: 0; right: 0; height: 20px; font-size: 8px; color: #94a3b8; border-t: 1px solid #e2e8f0; padding-top: 4px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>' . htmlspecialchars($title) . '</h2>
+                    <p>Export Date: ' . date('d M Y, H:i') . ' | Total Records: ' . count($data) . '</p>
+                </div>
+                <table>
+                    <thead>
+                        <tr>';
+            foreach ($exportCols as $c) {
+                $html .= '<th>' . htmlspecialchars($c['label'] ?? $c['name']) . '</th>';
+            }
+            $html .= '</tr>
+                    </thead>
+                    <tbody>';
+            foreach ($data as $row) {
+                $html .= '<tr>';
+                foreach ($exportCols as $c) {
+                    $val = $row->{$c['name']} ?? '';
+                    $cleanVal = is_string($val) ? trim(strip_tags($val)) : $val;
+                    $html .= '<td>' . htmlspecialchars((string)$cleanVal) . '</td>';
+                }
+                $html .= '</tr>';
+            }
+            $html .= '</tbody>
+                </table>
+                <div class="footer">
+                    <span>Generated by Inermin Admin System &bull; Page 1</span>
+                </div>
+            </body>
+            </html>';
+
+            $pdf = Pdf::loadHTML($html);
+            $pdf->setPaper($paperSize, $pageOrientation);
+            return $pdf->download($filename . '.pdf');
+        }
+
+        // Excel / CSV Export via FastExcel
+        $ext = $fileformat === 'csv' ? '.csv' : '.xlsx';
+        return (new FastExcel($data))->download($filename . $ext, function ($row) use ($exportCols) {
+            $formatted = [];
+            foreach ($exportCols as $c) {
+                $name = $c['name'];
+                $label = $c['label'] ?? $name;
+                $val = $row->{$name} ?? '';
+                $formatted[$label] = is_string($val) ? trim(strip_tags($val)) : $val;
+            }
+            return $formatted;
+        });
     }
 
-    public function postImportData()
+    /**
+     * FastExcel Data Import
+     */
+    public function postImportData(Request $request)
     {
         if (!$this->button_import) {
-            return redirect(Inermin::mainpath())->with('error', 'Import access denied!');
+            return redirect(Inermin::mainpath())->with('error', 'Import disabled!');
         }
 
-        $request = request();
-        if (!$request->hasFile('userfile')) {
-            return redirect()->back()->with('error', 'Please choose a file to import.');
+        $file = $request->file('userfile') ?: $request->file('file');
+        if (!$file) {
+            return redirect(Inermin::mainpath())->with('error', 'No import file uploaded!');
         }
 
-        $file = $request->file('userfile');
-        $path = $file->getRealPath();
-
-        if (class_exists(\Rap2hpoutre\FastExcel\FastExcel::class)) {
-            $collections = (new \Rap2hpoutre\FastExcel\FastExcel())->import($path);
-            $inserted = 0;
-            foreach ($collections as $row) {
-                $insertData = [];
-                foreach ($row as $k => $v) {
-                    if ($k && Schema::hasColumn($this->table, $k) && $k !== $this->primary_key) {
-                        $insertData[$k] = $v;
+        try {
+            $count = 0;
+            (new FastExcel)->import($file->getRealPath(), function ($line) use (&$count) {
+                $insert = [];
+                foreach ($this->form as $f) {
+                    $name = $f['name'] ?? null;
+                    $label = $f['label'] ?? $name;
+                    if ($name && isset($line[$label])) {
+                        $insert[$name] = $line[$label];
+                    } elseif ($name && isset($line[$name])) {
+                        $insert[$name] = $line[$name];
                     }
                 }
-                if (!empty($insertData)) {
+                if (!empty($insert)) {
                     if (Schema::hasColumn($this->table, 'created_at')) {
-                        $insertData['created_at'] = now();
+                        $insert['created_at'] = now();
                     }
-                    DB::table($this->table)->insert($insertData);
-                    $inserted++;
+                    DB::table($this->table)->insert($insert);
+                    $count++;
                 }
-            }
-            Inermin::insertLog("Imported $inserted rows into " . $this->table);
-            return redirect()->back()->with('success', "Imported $inserted rows successfully!");
+            });
+
+            return redirect(Inermin::mainpath())->with('success', "Imported {$count} records successfully!");
+        } catch (\Exception $e) {
+            return redirect(Inermin::mainpath())->with('error', 'Import failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk Selected Row Actions (Delete, etc)
+     */
+    public function postActionSelected(Request $request)
+    {
+        $id = $request->input('id', []);
+        $buttonName = $request->input('button_name');
+
+        if (empty($id)) {
+            return redirect(Inermin::mainpath())->with('error', 'No records selected!');
         }
 
-        return redirect()->back()->with('error', 'FastExcel package not installed.');
-    }
-}
+        if ($buttonName === 'delete' && $this->button_delete) {
+            DB::table($this->table)->whereIn($this->primary_key, $id)->delete();
+            Inermin::insertLog('Bulk deleted ' . count($id) . ' records in ' . $this->table);
+            return redirect(Inermin::mainpath())->with('success', 'Selected records deleted successfully!');
+        }
 
+        return redirect(Inermin::mainpath())->with('success', 'Action completed successfully!');
+    }
+
+    // Default empty hooks
+    public function hook_before_add(&$arr) {}
+    public function hook_after_add($id) {}
+    public function hook_before_edit(&$arr, $id) {}
+    public function hook_after_edit($id) {}
+    public function hook_before_delete($id) {}
+    public function hook_after_delete($id) {}
+    public function hook_row_index($column_index, &$column_value) {}
+}

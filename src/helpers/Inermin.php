@@ -273,8 +273,8 @@ class Inermin
             Route::get('/detail/{id?}', [$controllerClass, 'getDetail']);
             Route::get('/delete/{id?}', [$controllerClass, 'getDelete']);
             Route::post('/action-selected', [$controllerClass, 'postActionSelected']);
-            Route::get('/export-data', [$controllerClass, 'getExportData']);
-            Route::post('/import-data', [$controllerClass, 'postImportData']);
+            Route::match(['get', 'post'], '/export-data', [$controllerClass, 'postExportData']);
+            Route::match(['get', 'post'], '/import-data', [$controllerClass, 'postImportData']);
         });
     }
 

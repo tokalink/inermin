@@ -151,10 +151,14 @@ return new class extends Migration
         if (! Schema::hasTable('cms_apicustom')) {
             Schema::create('cms_apicustom', function (Blueprint $table) {
                 $table->id();
+                $table->string('nama')->nullable();
                 $table->string('permalink')->nullable();
                 $table->string('tabel')->nullable();
                 $table->string('aksi')->nullable();
                 $table->string('method_type')->nullable()->default('get');
+                $table->string('sql_where')->nullable();
+                $table->string('sql_orderby')->nullable();
+                $table->string('secret_key')->nullable();
                 $table->text('parameters')->nullable();
                 $table->text('responses')->nullable();
                 $table->timestamps();
@@ -178,6 +182,7 @@ return new class extends Migration
                 $table->integer('id_cms_statistics')->nullable();
                 $table->string('componentID')->nullable();
                 $table->string('component_name')->nullable();
+                $table->string('area_name')->nullable();
                 $table->text('config')->nullable();
                 $table->integer('sorting')->default(0);
                 $table->timestamps();

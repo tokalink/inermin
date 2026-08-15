@@ -43,7 +43,7 @@ const submit = () => {
             v-model="form.email"
             type="email"
             required
-            placeholder="admin@crudbooster.com"
+            placeholder="admin@inermin.com"
             class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
           />
           <p v-if="form.errors.email" class="text-[11px] text-rose-500 font-semibold mt-1">{{ form.errors.email }}</p>

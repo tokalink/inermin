@@ -3,7 +3,7 @@
 namespace Tokalink\Inermin\controllers;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Tokalink\Inermin\helpers\Inermin;
 
@@ -29,7 +29,7 @@ class InerminPrivilegesController extends InerminController
         ];
     }
 
-    public function getIndex()
+    public function getIndex(Request $request = null)
     {
         $this->cbInit();
 

@@ -58,7 +58,7 @@ class InerminDatabaseSeeder extends Seeder
             ['name' => 'appname', 'label' => 'Application Name', 'content' => 'Inermin Admin', 'group_setting' => 'General Setting', 'content_input_type' => 'text'],
             ['name' => 'logo', 'label' => 'Application Logo', 'content' => '', 'group_setting' => 'General Setting', 'content_input_type' => 'upload_image'],
             ['name' => 'favicon', 'label' => 'Favicon', 'content' => '', 'group_setting' => 'General Setting', 'content_input_type' => 'upload_image'],
-            ['name' => 'email_sender', 'label' => 'Email Sender', 'content' => 'admin@crudbooster.com', 'group_setting' => 'Email Setting', 'content_input_type' => 'email'],
+            ['name' => 'email_sender', 'label' => 'Email Sender', 'content' => 'admin@inermin.com', 'group_setting' => 'Email Setting', 'content_input_type' => 'email'],
             ['name' => 'smtp_host', 'label' => 'SMTP Host', 'content' => 'smtp.gmail.com', 'group_setting' => 'Email Setting', 'content_input_type' => 'text'],
             ['name' => 'smtp_port', 'label' => 'SMTP Port', 'content' => '587', 'group_setting' => 'Email Setting', 'content_input_type' => 'text'],
         ];

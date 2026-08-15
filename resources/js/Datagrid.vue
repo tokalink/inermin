@@ -26,9 +26,25 @@ const searchQuery = ref(props.filters?.q || '')
 const currentOrderby = ref(props.filters?.orderby || '')
 const currentLimit = ref(props.filters?.limit || 20)
 
-// CRUDBooster Advanced Filter Drawer State
+// CRUDBooster Advanced Filter Drawer, Import, & Export Modal State
 const isFilterDrawerOpen = ref(false)
+const isImportModalOpen = ref(false)
+const isExportModalOpen = ref(false)
 const filterConditions = ref([])
+
+const exportFormat = ref('xlsx')
+const exportPaperSize = ref('a4')
+const exportOrientation = ref('landscape')
+const exportFilename = ref('')
+const exportSelectedCols = ref(props.columns ? props.columns.map(c => c.name) : [])
+
+const selectAllExportCols = () => {
+  exportSelectedCols.value = props.columns ? props.columns.map(c => c.name) : []
+}
+
+const deselectAllExportCols = () => {
+  exportSelectedCols.value = []
+}
 
 // Initialize active filters from props.filters.filter_column
 if (props.filters?.filter_column && typeof props.filters.filter_column === 'object') {
@@ -288,17 +304,191 @@ const toggleDropdown = (id) => {
           </button>
 
           <!-- Export Data Button -->
-          <a
+          <button
             v-if="permissions.can_export"
-            :href="currentPath + '/export-data'"
-            target="_blank"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs rounded-xl shadow-xs transition"
+            @click="isExportModalOpen = true"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 font-bold text-xs rounded-xl shadow-xs transition"
           >
             <i class="bi bi-download text-indigo-500"></i>
             <span>Export Data</span>
-          </a>
+          </button>
+
+          <!-- Import Data Button -->
+          <button
+            v-if="permissions.can_import"
+            @click="isImportModalOpen = true"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 font-bold text-xs rounded-xl shadow-xs transition"
+          >
+            <i class="bi bi-upload text-emerald-500"></i>
+            <span>Import Data</span>
+          </button>
         </div>
       </div>
+
+      <!-- Advanced Export Data Modal -->
+      <Transition name="fade">
+        <div v-if="isExportModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div class="card w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4 border border-stone-200 dark:border-white/10 max-h-[90vh] flex flex-col">
+            
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-stone-100 dark:border-white/5 pb-3 shrink-0">
+              <h3 class="font-bold text-base text-stone-900 dark:text-white flex items-center gap-2">
+                <i class="bi bi-file-earmark-pdf text-indigo-500"></i>
+                <span>Export Data Options</span>
+              </h3>
+              <button @click="isExportModalOpen = false" class="text-stone-400 hover:text-stone-600 dark:hover:text-white">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <!-- Form -->
+            <form :action="currentPath + '/export-data'" method="POST" target="_blank" class="space-y-4 overflow-y-auto pr-1 custom-scrollbar flex-1">
+              <input type="hidden" name="_token" :value="page.props.csrf_token || ''" />
+              <input type="hidden" name="q" :value="searchQuery" />
+
+              <!-- File Format Selector -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-stone-700 dark:text-stone-300">File Format</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <label :class="['flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition', exportFormat === 'xlsx' ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-400']">
+                    <input type="radio" name="fileformat" value="xlsx" v-model="exportFormat" class="sr-only" />
+                    <i class="bi bi-file-earmark-excel text-base"></i>
+                    <span>Excel (.xlsx)</span>
+                  </label>
+                  
+                  <label :class="['flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition', exportFormat === 'pdf' ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 text-rose-600 dark:text-rose-400' : 'border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-400']">
+                    <input type="radio" name="fileformat" value="pdf" v-model="exportFormat" class="sr-only" />
+                    <i class="bi bi-file-earmark-pdf text-base"></i>
+                    <span>PDF Document</span>
+                  </label>
+
+                  <label :class="['flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition', exportFormat === 'csv' ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 text-amber-600 dark:text-amber-400' : 'border-stone-200 dark:border-white/10 text-stone-600 dark:text-stone-400']">
+                    <input type="radio" name="fileformat" value="csv" v-model="exportFormat" class="sr-only" />
+                    <i class="bi bi-file-earmark-text text-base"></i>
+                    <span>CSV File</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- PDF Specific Options (Paper Size & Orientation) -->
+              <Transition name="fade">
+                <div v-if="exportFormat === 'pdf'" class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-stone-50 dark:bg-white/[0.03] border border-stone-200/60 dark:border-white/5">
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-bold text-stone-600 dark:text-stone-400">Paper Size</label>
+                    <select name="paper_size" v-model="exportPaperSize" class="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 dark:text-stone-200 font-medium">
+                      <option value="a4">A4 (Standard)</option>
+                      <option value="legal">Legal (Long)</option>
+                      <option value="letter">Letter</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-1">
+                    <label class="text-[11px] font-bold text-stone-600 dark:text-stone-400">Orientation</label>
+                    <select name="page_orientation" v-model="exportOrientation" class="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 dark:text-stone-200 font-medium">
+                      <option value="landscape">Landscape (Horizontal Wide)</option>
+                      <option value="portrait">Portrait (Vertical)</option>
+                    </select>
+                  </div>
+                </div>
+              </Transition>
+
+              <!-- Filename Input -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-stone-700 dark:text-stone-300">Custom Filename (Optional)</label>
+                <input
+                  type="text"
+                  name="filename"
+                  v-model="exportFilename"
+                  :placeholder="table_name + '_export_' + new Date().toISOString().slice(0,10)"
+                  class="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <!-- Column Selector Checkboxes -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Select Columns to Export ({{ exportSelectedCols.length }} of {{ columns.length }})
+                  </label>
+                  <div class="flex items-center gap-2 text-[11px] font-bold">
+                    <button type="button" @click="selectAllExportCols" class="text-indigo-600 dark:text-indigo-400 hover:underline">Select All</button>
+                    <span class="text-stone-300 dark:text-stone-700">&bull;</span>
+                    <button type="button" @click="deselectAllExportCols" class="text-rose-600 dark:text-rose-400 hover:underline">Deselect All</button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 rounded-xl bg-stone-50 dark:bg-white/[0.02] border border-stone-200/60 dark:border-white/5 custom-scrollbar">
+                  <label
+                    v-for="col in columns"
+                    :key="col.name"
+                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-white/5 cursor-pointer text-xs font-medium text-stone-800 dark:text-stone-200 select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      name="columns[]"
+                      :value="col.name"
+                      v-model="exportSelectedCols"
+                      class="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                    />
+                    <span class="truncate">{{ col.label || col.name }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Action Footer -->
+              <div class="flex justify-end gap-2 pt-3 border-t border-stone-100 dark:border-white/5 shrink-0">
+                <button type="button" @click="isExportModalOpen = false" class="px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5 rounded-xl">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  @click="isExportModalOpen = false"
+                  :disabled="exportSelectedCols.length === 0"
+                  class="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-md flex items-center gap-2"
+                >
+                  <i class="bi bi-download"></i>
+                  <span>Download {{ exportFormat.toUpperCase() }}</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Import Data Modal -->
+      <Transition name="fade">
+        <div v-if="isImportModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div class="card w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 border border-stone-200 dark:border-white/10">
+            <div class="flex items-center justify-between border-b border-stone-100 dark:border-white/5 pb-3">
+              <h3 class="font-bold text-base text-stone-900 dark:text-white flex items-center gap-2">
+                <i class="bi bi-file-earmark-excel text-emerald-500"></i>
+                <span>Import Data (.xlsx / .csv)</span>
+              </h3>
+              <button @click="isImportModalOpen = false" class="text-stone-400 hover:text-stone-600 dark:hover:text-white">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <form :action="currentPath + '/import-data'" method="POST" enctype="multipart/form-data" class="space-y-4">
+              <input type="hidden" name="_token" :value="page.props.csrf_token || ''" />
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-stone-700 dark:text-stone-300">Choose Excel File (.xlsx / .csv)</label>
+                <input type="file" name="userfile" accept=".xlsx, .xls, .csv" required class="block w-full text-xs text-stone-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-950/50 dark:file:text-emerald-400 cursor-pointer" />
+              </div>
+
+              <div class="flex justify-end gap-2 pt-3 border-t border-stone-100 dark:border-white/5">
+                <button type="button" @click="isImportModalOpen = false" class="px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5 rounded-xl">
+                  Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">
+                  Start Import
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
 
       <!-- Active Filters Display Pills Bar -->
       <div v-if="activeFilterCount > 0" class="flex items-center gap-2 flex-wrap bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 p-3 rounded-2xl">
@@ -442,6 +632,9 @@ const toggleDropdown = (id) => {
                     <span class="font-mono text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200/40 dark:border-indigo-800/40">
                       #{{ item[col.name] }}
                     </span>
+                  </template>
+                  <template v-else-if="typeof item[col.name] === 'string' && (item[col.name].includes('<') && item[col.name].includes('>'))">
+                    <span v-html="item[col.name]"></span>
                   </template>
                   <template v-else>
                     <span class="text-slate-800 dark:text-slate-200">{{ item[col.name] !== null ? item[col.name] : '-' }}</span>

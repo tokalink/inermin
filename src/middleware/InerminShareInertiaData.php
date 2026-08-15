@@ -5,6 +5,7 @@ namespace Tokalink\Inermin\middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Tokalink\Inermin\helpers\Inermin;
@@ -29,6 +30,7 @@ class InerminShareInertiaData
                     ] : null,
                 ],
                 'menu' => $this->getMenuTree(),
+                'notifications' => $this->getNotifications(),
                 'flash' => [
                     'success' => Session::get('success'),
                     'error' => Session::get('error'),
@@ -38,6 +40,43 @@ class InerminShareInertiaData
         }
 
         return $next($request);
+    }
+
+    private function getNotifications()
+    {
+        if (! Session::get('admin_id')) return [];
+
+        try {
+            if (Schema::hasTable('cms_notifications')) {
+                return DB::table('cms_notifications')
+                    ->where('id_cms_users', Session::get('admin_id'))
+                    ->orderBy('id', 'desc')
+                    ->take(10)
+                    ->get();
+            }
+
+            if (Schema::hasTable('cms_logs')) {
+                return DB::table('cms_logs')
+                    ->orderBy('id', 'desc')
+                    ->take(5)
+                    ->get()
+                    ->map(function ($log) {
+                        return [
+                            'id' => $log->id,
+                            'content' => $log->description,
+                            'url' => '#',
+                            'is_read' => 0,
+                            'created_at' => $log->created_at ? date('M d, H:i', strtotime($log->created_at)) : 'Just now',
+                            'icon' => 'bi bi-info-circle-fill',
+                            'color' => 'amber'
+                        ];
+                    });
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     private function getMenuTree()
@@ -92,17 +131,15 @@ class InerminShareInertiaData
             return $path;
         }
 
-        // Handle CRUDBooster ControllerGetIndex paths (e.g. AdminAbsenControllerGetIndex -> /administrator/absen)
+        // Handle CRUDBooster ControllerGetIndex paths
         if (str_contains($path, 'ControllerGetIndex') || str_contains($path, 'Controller')) {
             $controllerName = str_replace(['GetIndex', 'getIndex'], '', $path);
             
-            // Search matching module in cms_moduls
             $modul = DB::table('cms_moduls')->where('controller', $controllerName)->first();
             if ($modul && $modul->path) {
                 return Inermin::adminPath($modul->path);
             }
 
-            // Fallback: derive slug from controller name (e.g. AdminAbsenController -> absen)
             $cleanName = str_replace(['App\\Http\\Controllers\\', 'Tokalink\\Inermin\\controllers\\', 'crocodicstudio\\crudbooster\\controllers\\', 'Admin', 'Controller'], '', $controllerName);
             $slug = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $cleanName));
             $slug = ltrim($slug, '_');
@@ -111,5 +148,4 @@ class InerminShareInertiaData
 
         return Inermin::adminPath($path);
     }
-
 }

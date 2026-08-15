@@ -12,8 +12,12 @@ use Tokalink\Inermin\controllers\InerminLogsController;
 use Tokalink\Inermin\controllers\InerminApiController;
 use Tokalink\Inermin\controllers\InerminEmailController;
 use Tokalink\Inermin\controllers\InerminStatisticController;
+use Tokalink\Inermin\controllers\InerminApiEngineController;
 use Tokalink\Inermin\middleware\InerminAuthMiddleware;
 use Tokalink\Inermin\middleware\InerminShareInertiaData;
+
+// Public & Authenticated Custom API Generator Endpoints
+Route::match(['get', 'post', 'put', 'delete'], '/api/{permalink}', [InerminApiEngineController::class, 'handleApi']);
 
 $prefix = config('inermin.ADMIN_PATH', 'administrator');
 
@@ -55,10 +59,9 @@ Route::group([
         Route::get('/menus/delete/{id}', [InerminMenusController::class, 'getDelete']);
 
         Route::get('/settings', [InerminSettingsController::class, 'getIndex']);
-        Route::get('/settings/add', [InerminSettingsController::class, 'getAdd']);
+        Route::post('/settings/save', [InerminSettingsController::class, 'postSave']);
         Route::post('/settings/add', [InerminSettingsController::class, 'postAddSave']);
-        Route::get('/settings/edit/{id}', [InerminSettingsController::class, 'getEdit']);
-        Route::post('/settings/edit/{id}', [InerminSettingsController::class, 'postEditSave']);
+        Route::get('/settings/delete-setting/{id}', [InerminSettingsController::class, 'getDeleteSetting']);
         Route::get('/settings/delete/{id}', [InerminSettingsController::class, 'getDelete']);
 
         Route::get('/modules', [InerminModulsController::class, 'getIndex']);
@@ -95,6 +98,12 @@ Route::group([
         Route::get('/statistic_builder/edit/{id}', [InerminStatisticController::class, 'getEdit']);
         Route::post('/statistic_builder/edit/{id}', [InerminStatisticController::class, 'postEditSave']);
         Route::get('/statistic_builder/delete/{id}', [InerminStatisticController::class, 'getDelete']);
+        Route::get('/statistic_builder/builder/{id}', [InerminStatisticController::class, 'getBuilder']);
+        Route::get('/statistic_builder/show/{slug}', [InerminStatisticController::class, 'getShow']);
+        Route::post('/statistic_builder/add-component', [InerminStatisticController::class, 'postAddComponent']);
+        Route::post('/statistic_builder/update-area-component', [InerminStatisticController::class, 'postUpdateAreaComponent']);
+        Route::post('/statistic_builder/save-component', [InerminStatisticController::class, 'postSaveComponent']);
+        Route::get('/statistic_builder/delete-component/{id}', [InerminStatisticController::class, 'getDeleteComponent']);
     });
 });
 
