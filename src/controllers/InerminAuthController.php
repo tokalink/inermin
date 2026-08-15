@@ -19,7 +19,10 @@ class InerminAuthController extends Controller
         }
 
         return Inertia::render('Inermin/Auth/Login', [
-            'app_name' => config('inermin.APP_NAME', 'Inermin Admin'),
+            'app_name' => Inermin::getSetting('appname') ?: config('inermin.APP_NAME', 'Inermin Admin'),
+            'app_logo' => Inermin::getSetting('logo'),
+            'login_style' => Inermin::getSetting('login_style') ?: 'glassmorphism',
+            'login_background_image' => Inermin::getSetting('login_background_image'),
         ]);
     }
 

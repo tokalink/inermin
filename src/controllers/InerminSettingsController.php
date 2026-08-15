@@ -14,6 +14,34 @@ class InerminSettingsController extends Controller
     {
         Inermin::insertLog("Viewed System Settings");
 
+        // Ensure default login_style and login_background_image exist in cms_settings
+        $hasLoginStyle = DB::table('cms_settings')->where('name', 'login_style')->exists();
+        if (!$hasLoginStyle) {
+            DB::table('cms_settings')->insert([
+                'name' => 'login_style',
+                'label' => 'Login Page Theme Style',
+                'group_setting' => 'Application Setting',
+                'content_input_type' => 'select',
+                'dataenum' => 'glassmorphism:Aether Glassmorphism (Centered Floating Card),split-screen:Split Screen (Left Branding / Right Form),minimal-clean:Executive Minimalist (Clean Compact),gradient-glow:Cyber Mesh Gradient (Animated Radial)',
+                'helper' => 'Choose visual layout theme style for the login page',
+                'content' => 'glassmorphism',
+                'created_at' => now(),
+            ]);
+        }
+
+        $hasLoginBg = DB::table('cms_settings')->where('name', 'login_background_image')->exists();
+        if (!$hasLoginBg) {
+            DB::table('cms_settings')->insert([
+                'name' => 'login_background_image',
+                'label' => 'Custom Login Background Image',
+                'group_setting' => 'Application Setting',
+                'content_input_type' => 'upload_image',
+                'helper' => 'Upload a custom background wallpaper image for login page (Optional)',
+                'content' => '',
+                'created_at' => now(),
+            ]);
+        }
+
         $allSettings = DB::table('cms_settings')->orderBy('group_setting', 'asc')->orderBy('id', 'asc')->get();
 
         $groups = $allSettings->pluck('group_setting')->unique()->filter()->values();

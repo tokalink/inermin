@@ -78,10 +78,19 @@ const deleteSettingKey = (id, name) => {
 
 const parseEnumOptions = (dataenum) => {
   if (!dataenum) return []
+  let items = []
   if (typeof dataenum === 'string') {
-    return dataenum.split(',').map(item => item.trim())
+    items = dataenum.split(',').map(item => item.trim())
+  } else {
+    items = dataenum
   }
-  return dataenum
+  return items.map(item => {
+    if (typeof item === 'string' && item.includes(':')) {
+      const parts = item.split(':')
+      return { value: parts[0].trim(), label: parts.slice(1).join(':').trim() }
+    }
+    return { value: item, label: item }
+  })
 }
 </script>
 
@@ -225,8 +234,8 @@ const parseEnumOptions = (dataenum) => {
                     v-model="formData[stg.name]"
                     class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
                   >
-                    <option v-for="opt in parseEnumOptions(stg.dataenum)" :key="opt" :value="opt">
-                      {{ opt }}
+                    <option v-for="opt in parseEnumOptions(stg.dataenum)" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
                     </option>
                   </select>
                 </template>
