@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useForm, Link, usePage } from '@inertiajs/vue3'
 import InerminAppLayout from './InerminAppLayout.vue'
 import LOVModal from './LOVModal.vue'
+import WYSIWYGEditor from './WYSIWYGEditor.vue'
 
 const props = defineProps({
   page_title: String,
@@ -228,8 +229,17 @@ const submitForm = () => {
                   />
                 </div>
 
-                <!-- 3. TEXTAREA / WYSIWYG -->
-                <div v-else-if="field.type === 'textarea' || field.type === 'wysiwyg'">
+                <!-- 3. TEXTAREA / WYSIWYG / CKEDITOR -->
+                <div v-else-if="['wysiwyg', 'ckeditor', 'tinymce', 'richtext', 'html'].includes(field.type)">
+                  <WYSIWYGEditor
+                    v-model="form[field.name]"
+                    :placeholder="field.placeholder || 'Enter ' + field.label"
+                    :disabled="is_detail || field.readonly || field.disabled"
+                    :readonly="is_detail || field.readonly || field.disabled"
+                  />
+                </div>
+
+                <div v-else-if="field.type === 'textarea'">
                   <textarea
                     v-model="form[field.name]"
                     rows="4"
