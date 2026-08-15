@@ -104,18 +104,24 @@ class InerminController extends Controller
 
         // Process automatic Joins for col datatable definitions
         $selects = [$this->table . '.*'];
+        $joinedFields = [];
         foreach ($this->col as $col) {
             if (!empty($col['datatable'])) {
                 $rawDatatable = explode(',', $col['datatable']);
                 $relTable = trim($rawDatatable[0]);
                 $relColumn = trim($rawDatatable[1] ?? 'name');
                 $relKey = $col['datatable_value'] ?? 'id';
-                $fieldName = $col['name'];
-                $aliasName = $fieldName . '_label';
+                $fieldName = $col['name'] ?? null;
 
-                if (Schema::hasTable($relTable)) {
-                    $query->leftJoin($relTable, $relTable . '.' . $relKey, '=', $this->table . '.' . $fieldName);
-                    $selects[] = $relTable . '.' . $relColumn . ' as ' . $aliasName;
+                if ($fieldName && !isset($joinedFields[$fieldName])) {
+                    $joinedFields[$fieldName] = true;
+                    $aliasTable = 'rel_' . $fieldName;
+                    $aliasName = $fieldName . '_label';
+
+                    if (Schema::hasTable($relTable)) {
+                        $query->leftJoin($relTable . ' as ' . $aliasTable, $aliasTable . '.' . $relKey, '=', $this->table . '.' . $fieldName);
+                        $selects[] = $aliasTable . '.' . $relColumn . ' as ' . $aliasName;
+                    }
                 }
             }
         }
@@ -332,23 +338,71 @@ class InerminController extends Controller
             return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
         }
 
-        $row = DB::table($this->table)->where($this->primary_key, $id)->first();
+        $query = DB::table($this->table)->where($this->table . '.' . $this->primary_key, $id);
+
+        // Auto-join relational tables defined in form or col (prioritizing form definition)
+        $selects = [$this->table . '.*'];
+        $allSchemas = array_merge($this->form, $this->col);
+        $joinedFields = [];
+
+        foreach ($allSchemas as $item) {
+            if (!empty($item['datatable'])) {
+                $rawDatatable = explode(',', $item['datatable']);
+                $relTable = trim($rawDatatable[0]);
+                $relColumn = trim($rawDatatable[1] ?? 'name');
+                $relKey = $item['datatable_value'] ?? 'id';
+                $fieldName = $item['name'] ?? null;
+
+                if ($fieldName && !isset($joinedFields[$fieldName])) {
+                    $joinedFields[$fieldName] = true;
+                    $aliasTable = 'rel_' . $fieldName;
+                    $aliasName = $fieldName . '_label';
+
+                    if (Schema::hasTable($relTable)) {
+                        $query->leftJoin($relTable . ' as ' . $aliasTable, $aliasTable . '.' . $relKey, '=', $this->table . '.' . $fieldName);
+                        $selects[] = $aliasTable . '.' . $relColumn . ' as ' . $aliasName;
+                    }
+                }
+            }
+        }
+
+        $row = $query->select(array_unique($selects))->first();
         if (!$row) return redirect(Inermin::mainpath())->with('error', 'Record not found!');
 
         $processedForm = $this->processFormSchema();
 
-        return Inertia::render('Inermin/Form', [
+        // Replace foreign key IDs with joined labels or dataenum labels on $row
+        foreach ($processedForm as $f) {
+            $fieldName = $f['name'] ?? null;
+            if (!$fieldName) continue;
+
+            $aliasName = $fieldName . '_label';
+
+            if (isset($row->{$aliasName}) && $row->{$aliasName} !== null && $row->{$aliasName} !== '') {
+                $row->{$fieldName} = $row->{$aliasName};
+            } elseif (!empty($f['dataenum']) && isset($row->{$fieldName})) {
+                $rawVal = $row->{$fieldName};
+                foreach ($f['dataenum'] as $opt) {
+                    if (is_array($opt) && isset($opt['value'], $opt['label']) && (string)$opt['value'] === (string)$rawVal) {
+                        $row->{$fieldName} = $opt['label'];
+                        break;
+                    } elseif (is_object($opt) && isset($opt->value, $opt->label) && (string)$opt->value === (string)$rawVal) {
+                        $row->{$fieldName} = $opt->label;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return Inertia::render('Inermin/Detail', [
             'page_title' => 'Detail ' . ucwords(str_replace('_', ' ', $this->table)),
             'table_name' => $this->table,
             'primary_key' => $this->primary_key,
-            'form_schema' => array_map(function ($f) {
-                $f['readonly'] = true;
-                return $f;
-            }, $processedForm),
+            'form_schema' => $processedForm,
             'forms' => $processedForm,
             'row' => $row,
             'is_detail' => true,
-            'action_url' => '#',
+            'back_url' => Inermin::mainpath(),
         ]);
     }
 

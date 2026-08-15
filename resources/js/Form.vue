@@ -10,6 +10,7 @@ const props = defineProps({
   action_url: String,
   row: Object,
   is_edit: Boolean,
+  is_detail: Boolean,
 })
 
 const page = usePage()
@@ -93,7 +94,7 @@ const submitForm = () => {
               Module List
             </Link>
             <i class="bi bi-chevron-right text-[10px]"></i>
-            <span class="text-[rgb(var(--accent-rgb))] font-bold">{{ is_edit ? 'Edit Record' : 'Create Record' }}</span>
+            <span class="text-[rgb(var(--accent-rgb))] font-bold">{{ is_detail ? 'Detail Record' : (is_edit ? 'Edit Record' : 'Create Record') }}</span>
           </div>
 
           <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 dark:text-white mt-1">
@@ -162,7 +163,7 @@ const submitForm = () => {
                     :type="field.type === 'money' || field.type === 'currency' ? 'number' : (field.type || 'text')"
                     :placeholder="field.placeholder || 'Enter ' + field.label"
                     :required="field.required"
-                    :disabled="field.readonly || field.disabled"
+                    :disabled="is_detail || field.readonly || field.disabled"
                     :class="[
                       'w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl py-2.5 text-xs text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition',
                       field.type === 'money' || field.type === 'currency' ? 'pl-9 pr-3.5 font-mono' : 'px-3.5'
@@ -176,7 +177,7 @@ const submitForm = () => {
                     v-model="form[field.name]"
                     :type="field.type === 'datetime' ? 'datetime-local' : field.type"
                     :required="field.required"
-                    :disabled="field.readonly || field.disabled"
+                    :disabled="is_detail || field.readonly || field.disabled"
                     class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition font-mono custom-date-input"
                   />
                 </div>
@@ -188,7 +189,7 @@ const submitForm = () => {
                     rows="4"
                     :placeholder="field.placeholder || 'Enter ' + field.label"
                     :required="field.required"
-                    :disabled="field.readonly || field.disabled"
+                    :disabled="is_detail || field.readonly || field.disabled"
                     class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition"
                   ></textarea>
                 </div>
@@ -198,7 +199,7 @@ const submitForm = () => {
                   <select
                     v-model="form[field.name]"
                     :required="field.required"
-                    :disabled="field.readonly || field.disabled"
+                    :disabled="is_detail || field.readonly || field.disabled"
                     class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl pl-3.5 pr-10 py-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition appearance-none cursor-pointer"
                   >
                     <option value="" class="bg-white dark:bg-[#15130f] text-stone-900 dark:text-white">-- Select {{ field.label }} --</option>
@@ -225,6 +226,7 @@ const submitForm = () => {
                       type="radio"
                       v-model="form[field.name]"
                       :value="opt.value"
+                      :disabled="is_detail || field.readonly || field.disabled"
                       class="text-[rgb(var(--accent-rgb))] focus:ring-0"
                     />
                     <span>{{ opt.label }}</span>
@@ -320,13 +322,13 @@ const submitForm = () => {
           <!-- Form Actions Footer -->
           <div class="pt-6 border-t border-stone-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <Link
-              :href="currentPath.replace('/add', '').replace(/\/edit\/.*/, '')"
+              :href="currentPath.replace('/add', '').replace(/\/edit\/.*/, '').replace(/\/detail\/.*/, '')"
               class="px-5 py-2.5 bg-stone-100 dark:bg-white/5 text-stone-700 dark:text-stone-300 font-bold text-xs rounded-xl hover:bg-stone-200 dark:hover:bg-white/10 transition self-stretch sm:self-auto text-center"
             >
-              Cancel
+              {{ is_detail ? 'Back' : 'Cancel' }}
             </Link>
 
-            <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div v-if="!is_detail" class="flex items-center gap-3 w-full sm:w-auto">
               <button
                 type="submit"
                 :disabled="form.processing"
