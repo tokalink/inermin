@@ -12,6 +12,17 @@ class InerminAppsController extends InerminController
         $this->primary_key = 'id';
         $this->title_field = 'name';
 
+        // Auto-upgrade cms_apps schema if missing columns
+        if (\Illuminate\Support\Facades\Schema::hasTable('cms_apps')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('cms_apps', 'billing_type')) {
+                \Illuminate\Support\Facades\Schema::table('cms_apps', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->enum('billing_type', ['subscription', 'one_time', 'freemium'])->default('subscription')->after('icon');
+                    $table->decimal('price_yearly', 12, 2)->default(0)->after('price_monthly');
+                    $table->decimal('price_one_time', 12, 2)->default(0)->after('price_yearly');
+                });
+            }
+        }
+
         $this->col = [
             ['label' => 'ID', 'name' => 'id'],
             ['label' => 'APP NAME', 'name' => 'name'],
@@ -19,20 +30,21 @@ class InerminAppsController extends InerminController
                 return '<span class="font-mono text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">' . $row->code . '</span>';
             }],
             ['label' => 'BILLING TYPE', 'name' => 'billing_type', 'callback' => function ($row) {
-                return match ($row->billing_type) {
+                $type = $row->billing_type ?? 'subscription';
+                return match ($type) {
                     'one_time' => '<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Sekali Beli (Lifetime)</span>',
                     'freemium' => '<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Freemium (Gratis + Addon)</span>',
                     default => '<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Berlangganan (Subscription)</span>',
                 };
             }],
             ['label' => 'HARGA BULANAN', 'name' => 'price_monthly', 'callback' => function ($row) {
-                return '<span class="font-mono font-bold text-emerald-500">Rp ' . number_format($row->price_monthly ?: 0, 0, ',', '.') . '</span>';
+                return '<span class="font-mono font-bold text-emerald-500">Rp ' . number_format($row->price_monthly ?? 0, 0, ',', '.') . '</span>';
             }],
             ['label' => 'HARGA LIFETIME', 'name' => 'price_one_time', 'callback' => function ($row) {
-                return '<span class="font-mono font-bold text-indigo-400">Rp ' . number_format($row->price_one_time ?: 0, 0, ',', '.') . '</span>';
+                return '<span class="font-mono font-bold text-indigo-400">Rp ' . number_format($row->price_one_time ?? 0, 0, ',', '.') . '</span>';
             }],
             ['label' => 'STATUS', 'name' => 'is_active', 'callback' => function ($row) {
-                return $row->is_active 
+                return !empty($row->is_active)
                     ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Active</span>'
                     : '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">Inactive</span>';
             }],
