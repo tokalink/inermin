@@ -326,18 +326,18 @@ onMounted(() => {
                 </div>
 
                 <!-- Child Submenu Items -->
-                <ul v-if="isParentActiveOrExpanded(item) && (!isCollapsed || isMobileOpen)" class="pl-3.5 space-y-1 border-l-2 border-stone-200/80 dark:border-white/10 ml-5 my-1">
+                <ul v-if="isParentActiveOrExpanded(item) && (!isCollapsed || isMobileOpen)" class="relative ml-4 pl-3 my-1 border-l border-stone-200 dark:border-white/10 space-y-1">
                   <li v-for="child in item.children" :key="child.id">
                     <Link
                       :href="child.url || (adminPath + '/' + child.path)"
                       :class="[
-                        'nav-item group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200',
+                        'nav-item group flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-200 font-medium',
                         isMenuItemActive(child)
-                          ? 'active text-[rgb(var(--accent-rgb))] font-bold'
-                          : 'text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white'
+                          ? 'active text-[rgb(var(--accent-rgb))] font-bold bg-[rgb(var(--accent-rgb))]/10'
+                          : 'text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white hover:bg-stone-100/60 dark:hover:bg-white/5'
                       ]"
                     >
-                      <i :class="[child.icon || 'bi bi-circle-fill', 'text-[7px] shrink-0']"></i>
+                      <i :class="[child.icon || 'bi bi-circle', 'text-[11px] shrink-0 text-stone-400 group-hover:text-[rgb(var(--accent-rgb))] transition-colors']"></i>
                       <span class="truncate">{{ child.name }}</span>
                     </Link>
                   </li>

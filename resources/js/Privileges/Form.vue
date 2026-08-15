@@ -35,9 +35,15 @@ const form = useForm({
   roles: initialRoles,
 })
 
+const isRowAllChecked = (moduleId) => {
+  const r = form.roles[moduleId]
+  if (!r) return false
+  return Boolean(r.is_visible && r.is_create && r.is_read && r.is_edit && r.is_delete)
+}
+
 const toggleRow = (moduleId) => {
   const r = form.roles[moduleId]
-  const allChecked = r.is_visible && r.is_create && r.is_read && r.is_edit && r.is_delete
+  const allChecked = isRowAllChecked(moduleId)
   const newVal = allChecked ? 0 : 1
   r.is_visible = newVal
   r.is_create = newVal
@@ -188,13 +194,13 @@ const submit = () => {
                   </td>
 
                   <td class="px-4 py-3 text-center">
-                    <button
-                      type="button"
-                      @click="toggleRow(m.id)"
-                      class="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold rounded transition"
-                    >
-                      Toggle Row
-                    </button>
+                    <input
+                      type="checkbox"
+                      :checked="isRowAllChecked(m.id)"
+                      @change="toggleRow(m.id)"
+                      class="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                      title="Centang/Batal Semua Hak Akses pada Baris Ini"
+                    />
                   </td>
 
                   <!-- Visible -->

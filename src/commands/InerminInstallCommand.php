@@ -32,16 +32,7 @@ class InerminInstallCommand extends Command
         $seeder = new InerminDatabaseSeeder();
         $seeder->run();
 
-        // 4. Publish Vue 3 Pages & Layouts to host Laravel application
-        $targetDir = resource_path('js/Pages/Inermin');
-        $sourceDir = __DIR__ . '/../../resources/js';
-
-        if (File::exists($sourceDir)) {
-            File::copyDirectory($sourceDir, $targetDir);
-            $this->info('Published Vue 3 Pages & Layouts to resources/js/Pages/Inermin');
-        }
-
-        // Publish Static Assets (Default Avatar, Icons)
+        // 4. Publish Static Assets (Default Avatar, Icons)
         $assetsSource = __DIR__ . '/../../assets';
         $assetsTarget = public_path('vendor/inermin');
         if (File::exists($assetsSource)) {
@@ -50,13 +41,29 @@ class InerminInstallCommand extends Command
             $this->info('Published assets to public/vendor/inermin');
         }
 
+        // 5. Publish Customizable Dashboard.vue to host Laravel application
+        $targetDashboard = resource_path('js/Pages/Inermin/Dashboard.vue');
+        $sourceDashboard = __DIR__ . '/../../resources/js/Dashboard.vue';
+        if (File::exists($sourceDashboard) && !File::exists($targetDashboard)) {
+            File::ensureDirectoryExists(dirname($targetDashboard));
+            $content = File::get($sourceDashboard);
+            $content = str_replace(["'./InerminAppLayout.vue'", "'../InerminAppLayout.vue'"], "'@inermin/InerminAppLayout.vue'", $content);
+            File::put($targetDashboard, $content);
+            $this->info('Published customizable Dashboard.vue to resources/js/Pages/Inermin/Dashboard.vue');
+        }
+
         // 5. Install & Configure Inertia / Vue NPM Dependencies
         if (!$this->option('skip-npm')) {
             $this->installNpmDependencies();
         }
 
-        $this->info('Inermin SPA Admin installed successfully!');
-        $this->info('Superadmin Login: admin@inermin.com / 123456');
+        $this->info('=====================================================');
+        $this->info(' Inermin SPA Admin installed successfully! 🎉');
+        $this->info(' Superadmin Credentials:');
+        $this->info(' Email    : admin@inermin.com');
+        $this->info(' Password : 123456');
+        $this->info(' Admin URL: /administrator');
+        $this->info('=====================================================');
     }
 
     protected function installNpmDependencies()
@@ -147,26 +154,40 @@ class InerminInstallCommand extends Command
 
         $content = File::get($vitePath);
 
+        // 1. Ensure vue() plugin import
         if (!str_contains($content, '@vitejs/plugin-vue')) {
             $content = "import vue from '@vitejs/plugin-vue';\n" . $content;
             if (str_contains($content, 'plugins: [')) {
                 $content = str_replace('plugins: [', "plugins: [\n        vue(),", $content);
             }
-            $this->info('Added vue() plugin to vite.config.js');
         }
 
-        if (!str_contains($content, "alias:")) {
-            if (str_contains($content, 'export default defineConfig({')) {
+        // 2. Ensure path import
+        if (!str_contains($content, "import path from 'path';")) {
+            $content = "import path from 'path';\n" . $content;
+        }
+
+        // 3. Ensure @inermin path alias
+        if (!str_contains($content, '@inermin')) {
+            $packageJsPath = file_exists(base_path('packages/inermin/resources/js'))
+                ? "path.resolve(__dirname, 'packages/inermin/resources/js')"
+                : "path.resolve(__dirname, 'vendor/tokalink/inermin/resources/js')";
+
+            if (str_contains($content, 'alias: {')) {
+                $content = str_replace("alias: {", "alias: {\n            '@inermin': {$packageJsPath},", $content);
+            } else if (str_contains($content, 'export default defineConfig({')) {
                 $aliasConfig = <<<JS
 
     resolve: {
         alias: {
             '@': '/resources/js',
+            '@inermin': {$packageJsPath},
         },
     },
 JS;
                 $content = str_replace('export default defineConfig({', "export default defineConfig({" . $aliasConfig, $content);
             }
+            $this->info('Configured @inermin path alias in vite.config.js');
         }
 
         File::put($vitePath, $content);
@@ -175,17 +196,50 @@ JS;
     protected function configureAppJs()
     {
         $appJsPath = resource_path('js/app.js');
-        $content = File::exists($appJsPath) ? File::get($appJsPath) : '';
 
-        if (!str_contains($content, 'createInertiaApp')) {
-            $inertiaAppSetup = <<<JS
+        $inertiaAppSetup = <<<JS
 import { createApp, h } from 'vue'
 import { createInertiaApp } from '@inertiajs/vue3'
 
+// Load App-level Custom Vue Components from project resources/js/Pages
+const appPages = import.meta.glob('./Pages/**/*.vue', { eager: true })
+
+// Load Core Inermin Package Vue Components (supports vendor or local packages/)
+const packagePagesVendor = import.meta.glob('../../vendor/tokalink/inermin/resources/js/**/*.vue', { eager: true })
+const packagePagesLocal = import.meta.glob('../../packages/inermin/resources/js/**/*.vue', { eager: true })
+const packagePages = { ...packagePagesVendor, ...packagePagesLocal }
+
 createInertiaApp({
   resolve: name => {
-    const pages = import.meta.glob('./Pages/**/*.vue', { eager: true })
-    return pages[`./Pages/\${name}.vue`]
+    const cleanName = name.replace(/^Inermin\//, '').replace(/^\//, '')
+
+    const keysToTry = [
+      `./Pages/\${name}.vue`,
+      `./Pages/Inermin/\${cleanName}.vue`,
+      `./Pages/\${cleanName}.vue`,
+      `../../vendor/tokalink/inermin/resources/js/\${cleanName}.vue`,
+      `../../packages/inermin/resources/js/\${cleanName}.vue`
+    ]
+
+    for (const key of keysToTry) {
+      if (appPages[key]) return appPages[key]
+      if (packagePages[key]) return packagePages[key]
+    }
+
+    const lowerClean = cleanName.toLowerCase() + '.vue'
+    for (const key in appPages) {
+      if (key.toLowerCase().endsWith(lowerClean)) {
+        return appPages[key]
+      }
+    }
+    for (const key in packagePages) {
+      if (key.toLowerCase().endsWith(lowerClean)) {
+        return packagePages[key]
+      }
+    }
+
+    console.error(`[Inermin Error] Component "\${name}" is missing from the Vite bundle.`)
+    throw new Error(`Page component "\${name}" not found. Please run "npm run build".`)
   },
   setup({ el, App, props, plugin }) {
     createApp({ render: () => h(App, props) })
@@ -195,14 +249,7 @@ createInertiaApp({
 })
 JS;
 
-            if (trim($content) === '' || trim($content) === '//') {
-                File::put($appJsPath, $inertiaAppSetup . "\n");
-            } else {
-                File::append($appJsPath, "\n\n" . $inertiaAppSetup . "\n");
-            }
-            $this->info('Configured Inertia Vue 3 setup in resources/js/app.js');
-        }
+        File::put($appJsPath, $inertiaAppSetup . "\n");
+        $this->info('Configured Inertia Vue 3 setup in resources/js/app.js');
     }
 }
-
-

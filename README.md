@@ -82,6 +82,7 @@ Execute the installation artisan command to publish views, migrations, assets, a
 ```bash
 php artisan inermin:install
 ```
+*Note*: Running `inermin:install` automatically publishes a customizable `Dashboard.vue` to `resources/js/Pages/Inermin/Dashboard.vue` so you can customize your admin homepage right away.
 
 ### 4. Build Frontend Assets
 Compile Inertia Vue 3 assets via Vite:
@@ -89,12 +90,22 @@ Compile Inertia Vue 3 assets via Vite:
 npm run build
 ```
 
-### 5. Access Admin Portal
+### 5. Generate Custom Views via CLI
+Generate new scaffolded Vue page components or override core vendor views cleanly:
+```bash
+# Generate a new custom Vue view page component
+php artisan inermin:make-view CustomModule/Index
+
+# Override vendor core view (e.g., Dashboard) to project local resources/js/Pages/
+php artisan inermin:make-view Dashboard --force
+```
+
+### 6. Access Admin Portal
 Start your Laravel development server:
 ```bash
 php artisan serve
 ```
-Navigate to `http://localhost:8000/administrator` (Default credentials: `superadmin@inermin.com` / `123456`).
+Navigate to `http://localhost:8000/administrator` (Default credentials: `admin@inermin.com` / `123456`).
 
 ---
 
@@ -121,14 +132,17 @@ The **Aether Console** design system uses CSS custom properties defined in `Iner
 - **Live Search & Filter**: Real-time multi-column search with active pagination state retention.
 
 ### 2. Module Generator (`Modules/Wizard.vue`)
-- **Step 1**: Basic info (Module Name, Table, Icon, Slug).
-- **Step 2**: Datagrid Column display settings.
-- **Step 3**: Form field schema definition (Text, Select, Upload, Date, etc.).
-- **Step 4**: Finalization & automatic route generation.
-- *Note*: Creating a module automatically registers RBAC privilege matrix entries (`cms_privileges_roles`) for all roles.
+- **Module Types**:
+  - 📊 **Standard CRUD Module**: Creates database-backed Datagrid, Form, & Detail view.
+  - 💻 **Custom View Module**: Generates custom Controller & Vue View Scaffold without database table requirements (e.g. Chat, Custom Reports, Tools).
+- **Step 1**: Basic info & Module Type selection (Module Name, Table, Icon, Slug live preview).
+- **Step 2**: Datagrid Column display settings (automatically skipped for Custom View Modules).
+- **Step 3**: Form field schema definition (automatically skipped for Custom View Modules).
+- **Step 4**: Finalization, privilege assignment, and automatic route generation.
 
 ### 3. Privileges Role Permission Matrix (`Privileges/Form.vue`)
 - Responsive grid checklist matrix allowing administrators to set **Is Visible**, **Is Create**, **Is Read**, **Is Edit**, and **Is Delete** permissions per module.
+- Includes **Master Checkboxes** for each module row to select/deselect all 5 permissions in 1 click.
 - Includes quick-toggle column buttons (*Toggle All View*, *Toggle All Create*, etc.).
 
 ### 4. Statistic Builder (`StatisticBuilder/Builder.vue` & `Show.vue`)

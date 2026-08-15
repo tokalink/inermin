@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Route;
 use Tokalink\Inermin\commands\InerminInstallCommand;
+use Tokalink\Inermin\commands\InerminMakeViewCommand;
 use Tokalink\Inermin\helpers\Inermin;
 
 class InerminServiceProvider extends ServiceProvider
@@ -44,6 +45,7 @@ class InerminServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 InerminInstallCommand::class,
+                InerminMakeViewCommand::class,
             ]);
 
             $this->publishes([

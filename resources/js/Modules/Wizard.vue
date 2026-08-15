@@ -19,12 +19,27 @@ const props = defineProps({
 // Step 1 Form State
 const step1Form = ref({
   id: props.id || 0,
+  module_type: 'crud',
   name: props.row?.name || '',
   table_name: props.row?.table_name || (props.tables?.[0] || ''),
   icon: props.row?.icon || 'bi bi-boxes',
   path: props.row?.path || '',
   controller: props.row?.controller || '',
   create_menu: true,
+})
+
+watch(() => step1Form.value.name, (newName) => {
+  if (!props.id && newName) {
+    step1Form.value.path = newName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  }
+})
+
+watch(() => step1Form.value.module_type, (newType) => {
+  if (newType === 'custom') {
+    step1Form.value.table_name = ''
+  } else if (!step1Form.value.table_name && props.tables?.length) {
+    step1Form.value.table_name = props.tables[0]
+  }
 })
 
 // Step 2 Columns State
@@ -185,22 +200,48 @@ const removeFormField = (idx) => {
       <div v-if="step === 1" class="card rounded-2xl p-6 shadow-sm">
         <form @submit.prevent="submitStep1" class="space-y-4">
           
+          <!-- Module Type Selector -->
+          <div>
+            <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-2">Module Type *</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label :class="['p-3.5 rounded-xl border cursor-pointer transition flex items-start gap-3', step1Form.module_type === 'crud' ? 'border-[rgb(var(--accent-rgb))] bg-[rgb(var(--accent-rgb))]/5' : 'border-stone-200 dark:border-white/10']">
+                <input type="radio" v-model="step1Form.module_type" value="crud" class="mt-0.5 text-[rgb(var(--accent-rgb))] focus:ring-[rgb(var(--accent-rgb))]" />
+                <div>
+                  <div class="text-xs font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
+                    <i class="bi bi-table text-[rgb(var(--accent-rgb))]"></i> Standard CRUD Module
+                  </div>
+                  <p class="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Automated Data Table, Form Fields, Detail view connected to DB table.</p>
+                </div>
+              </label>
+
+              <label :class="['p-3.5 rounded-xl border cursor-pointer transition flex items-start gap-3', step1Form.module_type === 'custom' ? 'border-[rgb(var(--accent-rgb))] bg-[rgb(var(--accent-rgb))]/5' : 'border-stone-200 dark:border-white/10']">
+                <input type="radio" v-model="step1Form.module_type" value="custom" class="mt-0.5 text-[rgb(var(--accent-rgb))] focus:ring-[rgb(var(--accent-rgb))]" />
+                <div>
+                  <div class="text-xs font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
+                    <i class="bi bi-code-square text-indigo-500"></i> Custom View Module
+                  </div>
+                  <p class="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Custom Controller + Vue View component scaffold (e.g. Chat, Reports, Tools).</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Module Name *</label>
             <input
               v-model="step1Form.name"
               type="text"
               required
-              placeholder="e.g. Products, Absen Data"
+              placeholder="e.g. Products, Absen Data, Live Chat"
               class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
             />
           </div>
 
-          <div>
+          <div v-if="step1Form.module_type === 'crud'">
             <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Database Table *</label>
             <select
               v-model="step1Form.table_name"
-              required
+              :required="step1Form.module_type === 'crud'"
               class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
             >
               <option v-for="tbl in tables" :key="tbl" :value="tbl">{{ tbl }}</option>
