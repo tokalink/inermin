@@ -20,8 +20,8 @@ class InerminEmailController extends InerminController
         $this->form = [
             ['label' => 'Template Name', 'name' => 'name', 'type' => 'text', 'required' => true],
             ['label' => 'Slug', 'name' => 'slug', 'type' => 'text', 'required' => true],
-            ['label' => 'Subject', 'name' => 'subject', 'type' => 'text', 'required' => true],
-            ['label' => 'Content', 'name' => 'content', 'type' => 'textarea'],
+            ['label' => 'Subject', 'name' => 'subject', 'type' => 'text', 'required' => true, 'width' => 'col-span-12'],
+            ['label' => 'Content', 'name' => 'content', 'type' => 'html', 'width' => 'col-span-12'],
         ];
     }
 }
