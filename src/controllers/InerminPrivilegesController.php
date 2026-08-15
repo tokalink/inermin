@@ -29,6 +29,29 @@ class InerminPrivilegesController extends InerminController
         ];
     }
 
+    public function getIndex()
+    {
+        $this->cbInit();
+
+        $privileges = DB::table('cms_privileges')->orderBy('id', 'asc')->get();
+        foreach ($privileges as &$p) {
+            $p->users_count = DB::table('cms_users')->where('id_cms_privileges', $p->id)->count();
+        }
+
+        $stats = [
+            'total_roles' => count($privileges),
+            'total_users' => DB::table('cms_users')->count(),
+            'total_modules' => DB::table('cms_moduls')->where('is_protected', 0)->count(),
+            'recent_logs' => DB::table('cms_logs')->count(),
+        ];
+
+        return Inertia::render('Inermin/Privileges/Index', [
+            'page_title' => 'Privileges & Roles — Aether Console',
+            'privileges' => $privileges,
+            'stats' => $stats,
+        ]);
+    }
+
     public function getAdd()
     {
         $modules = DB::table('cms_moduls')
@@ -53,7 +76,7 @@ class InerminPrivilegesController extends InerminController
             'row' => null,
             'modules' => $modules,
             'roles' => $rolesMap,
-            'action_url' => '/' . Inermin::adminPath() . '/privileges/add',
+            'action_url' => Inermin::adminPath('privileges/add'),
         ]);
     }
 
@@ -62,7 +85,7 @@ class InerminPrivilegesController extends InerminController
         $request = request();
         $name = $request->input('name');
         $is_superadmin = (int) $request->input('is_superadmin', 0);
-        $theme_color = $request->input('theme_color', 'skin-blue');
+        $theme_color = $request->input('theme_color', 'theme-indigo');
 
         $privilegeId = DB::table('cms_privileges')->insertGetId([
             'name' => $name,
@@ -75,13 +98,15 @@ class InerminPrivilegesController extends InerminController
 
         Inermin::insertLog('Added new privilege: ' . $name);
 
-        return redirect('/' . Inermin::adminPath() . '/privileges')->with('success', 'Privilege saved successfully!');
+        return redirect(Inermin::adminPath('privileges'))->with('success', 'Privilege saved successfully!');
     }
 
-    public function getEdit($id)
+    public function getEdit($id = null)
     {
+        $id = $id ?: request('id');
         $row = DB::table('cms_privileges')->where('id', $id)->first();
-        if (!$row) return redirect('/' . Inermin::adminPath() . '/privileges');
+        if (!$row)
+            return redirect(Inermin::adminPath('privileges'));
 
         $modules = DB::table('cms_moduls')
             ->where('is_protected', 0)
@@ -111,16 +136,17 @@ class InerminPrivilegesController extends InerminController
             'row' => $row,
             'modules' => $modules,
             'roles' => $rolesMap,
-            'action_url' => '/' . Inermin::adminPath() . '/privileges/edit/' . $id,
+            'action_url' => Inermin::adminPath('privileges/edit/' . $id),
         ]);
     }
 
-    public function postEditSave($id)
+    public function postEditSave($id = null)
     {
+        $id = $id ?: request('id');
         $request = request();
         $name = $request->input('name');
         $is_superadmin = (int) $request->input('is_superadmin', 0);
-        $theme_color = $request->input('theme_color', 'skin-blue');
+        $theme_color = $request->input('theme_color', 'theme-indigo');
 
         DB::table('cms_privileges')->where('id', $id)->update([
             'name' => $name,
@@ -133,12 +159,13 @@ class InerminPrivilegesController extends InerminController
 
         Inermin::insertLog('Updated privilege #' . $id);
 
-        return redirect('/' . Inermin::adminPath() . '/privileges')->with('success', 'Privilege updated successfully!');
+        return redirect(Inermin::adminPath('privileges'))->with('success', 'Privilege updated successfully!');
     }
 
     private function savePrivilegeRoles($privilegeId, $rolesInput)
     {
-        if (!is_array($rolesInput)) return;
+        if (!is_array($rolesInput))
+            return;
 
         foreach ($rolesInput as $modulId => $role) {
             DB::table('cms_privileges_roles')->updateOrInsert(
@@ -148,10 +175,10 @@ class InerminPrivilegesController extends InerminController
                 ],
                 [
                     'is_visible' => !empty($role['is_visible']) ? 1 : 0,
-                    'is_create'  => !empty($role['is_create']) ? 1 : 0,
-                    'is_read'    => !empty($role['is_read']) ? 1 : 0,
-                    'is_edit'    => !empty($role['is_edit']) ? 1 : 0,
-                    'is_delete'  => !empty($role['is_delete']) ? 1 : 0,
+                    'is_create' => !empty($role['is_create']) ? 1 : 0,
+                    'is_read' => !empty($role['is_read']) ? 1 : 0,
+                    'is_edit' => !empty($role['is_edit']) ? 1 : 0,
+                    'is_delete' => !empty($role['is_delete']) ? 1 : 0,
                     'updated_at' => now(),
                 ]
             );

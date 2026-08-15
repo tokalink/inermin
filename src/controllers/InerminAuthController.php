@@ -40,9 +40,11 @@ class InerminAuthController extends Controller
             Session::put('admin_id', $user->id);
             Session::put('admin_is_superadmin', $priv ? $priv->is_superadmin : 0);
             Session::put('admin_name', $user->name);
-            Session::put('admin_photo', $user->photo ? asset($user->photo) : asset('vendor/crudbooster/avatar.jpg'));
+            $photo = ($user->photo && !str_contains($user->photo, 'crudbooster')) ? $user->photo : asset('vendor/inermin/avatar.svg');
+            Session::put('admin_photo', $photo);
             Session::put('admin_privileges', $user->id_cms_privileges);
             Session::put('admin_privileges_name', $priv ? $priv->name : 'Administrator');
+            Session::put('admin_theme_color', $priv ? $priv->theme_color : 'theme-indigo');
 
             return redirect()->to(Inermin::adminPath());
         }

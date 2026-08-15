@@ -85,6 +85,44 @@ class InerminController extends Controller
             });
         }
 
+        // Filter Column (CRUDBooster style advanced filter)
+        if ($filter_column = $request->input('filter_column')) {
+            $query->where(function ($w) use ($filter_column) {
+                foreach ($filter_column as $colName => $fc) {
+                    $value = $fc['value'] ?? null;
+                    $type = $fc['type'] ?? 'like';
+
+                    if ($type === 'empty') {
+                        $w->whereNull($this->table . '.' . $colName)->orWhere($this->table . '.' . $colName, '');
+                        continue;
+                    }
+
+                    if ($value === null || $value === '' || $type === '') {
+                        continue;
+                    }
+
+                    switch ($type) {
+                        case 'like':
+                        case 'not like':
+                            $w->where($this->table . '.' . $colName, $type, '%' . $value . '%');
+                            break;
+                        case 'in':
+                        case 'not in':
+                            $vals = is_array($value) ? $value : array_map('trim', explode(',', $value));
+                            if ($type === 'in') {
+                                $w->whereIn($this->table . '.' . $colName, $vals);
+                            } else {
+                                $w->whereNotIn($this->table . '.' . $colName, $vals);
+                            }
+                            break;
+                        default:
+                            $w->where($this->table . '.' . $colName, $type, $value);
+                            break;
+                    }
+                }
+            });
+        }
+
         // Sorting
         if ($orderby = $request->input('orderby', $this->orderby)) {
             $orderParts = explode(',', $orderby);
@@ -117,7 +155,7 @@ class InerminController extends Controller
             'primary_key' => $this->primary_key,
             'columns' => $this->col,
             'data' => $result,
-            'filters' => $request->only(['q', 'orderby', 'limit']),
+            'filters' => $request->only(['q', 'orderby', 'limit', 'filter_column']),
             'permissions' => [
                 'can_add' => $this->button_add && Inermin::isCreate(),
                 'can_edit' => $this->button_edit && Inermin::isUpdate(),
@@ -126,9 +164,13 @@ class InerminController extends Controller
                 'can_export' => $this->button_export,
                 'can_import' => $this->button_import,
                 'can_bulk_action' => $this->button_bulk_action,
+                'can_filter' => $this->button_filter,
+                'can_show' => $this->button_show,
+                'button_action_style' => $this->button_action_style,
             ],
             'sub_module' => $this->sub_module,
             'addaction' => $this->addaction,
+            'index_button' => $this->index_button,
             'button_selected' => $this->button_selected,
             'index_statistic' => $this->index_statistic,
             'alerts' => $this->alert,
@@ -137,6 +179,10 @@ class InerminController extends Controller
 
     public function getAdd()
     {
+        if (!$this->button_add || !Inermin::isCreate()) {
+            return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
+        }
+
         return Inertia::render('Inermin/Form', [
             'page_title' => 'Add ' . ucwords(str_replace('_', ' ', $this->table)),
             'table_name' => $this->table,
@@ -144,12 +190,16 @@ class InerminController extends Controller
             'form_schema' => $this->form,
             'forms' => $this->form,
             'row' => null,
-            'action_url' => '/' . Inermin::adminPath() . '/' . $this->table . '/add',
+            'action_url' => Inermin::mainpath('add'),
         ]);
     }
 
     public function postAddSave()
     {
+        if (!$this->button_add || !Inermin::isCreate()) {
+            return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
+        }
+
         $request = request();
         $data = [];
         foreach ($this->form as $f) {
@@ -170,13 +220,21 @@ class InerminController extends Controller
 
         Inermin::insertLog('Added new record #' . $id . ' in table ' . $this->table);
 
-        return redirect('/' . Inermin::adminPath() . '/' . $this->table)->with('success', 'Data saved successfully!');
+        return redirect(Inermin::mainpath())->with('success', 'Data saved successfully!');
     }
 
-    public function getEdit($id)
+    public function getEdit($id = null)
     {
+        $id = $id ?: request('id');
+        if (!$this->button_edit || !Inermin::isUpdate()) {
+            return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
+        }
+        if (!$id) {
+            return redirect(Inermin::mainpath());
+        }
+
         $row = DB::table($this->table)->where($this->primary_key, $id)->first();
-        if (!$row) return redirect('/' . Inermin::adminPath() . '/' . $this->table);
+        if (!$row) return redirect(Inermin::mainpath())->with('error', 'Record not found!');
 
         return Inertia::render('Inermin/Form', [
             'page_title' => 'Edit ' . ucwords(str_replace('_', ' ', $this->table)),
@@ -185,12 +243,20 @@ class InerminController extends Controller
             'form_schema' => $this->form,
             'forms' => $this->form,
             'row' => $row,
-            'action_url' => '/' . Inermin::adminPath() . '/' . $this->table . '/edit/' . $id,
+            'action_url' => Inermin::mainpath('edit/' . $id),
         ]);
     }
 
-    public function postEditSave($id)
+    public function postEditSave($id = null)
     {
+        $id = $id ?: request('id');
+        if (!$this->button_edit || !Inermin::isUpdate()) {
+            return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
+        }
+        if (!$id) {
+            return redirect(Inermin::mainpath());
+        }
+
         $request = request();
         $data = [];
         foreach ($this->form as $f) {
@@ -211,12 +277,21 @@ class InerminController extends Controller
 
         Inermin::insertLog('Updated record #' . $id . ' in table ' . $this->table);
 
-        return redirect('/' . Inermin::adminPath() . '/' . $this->table)->with('success', 'Data updated successfully!');
+        return redirect(Inermin::mainpath())->with('success', 'Data updated successfully!');
     }
 
-    public function getDetail($id)
+    public function getDetail($id = null)
     {
+        $id = $id ?: request('id');
+        if (!$this->button_detail || !Inermin::isRead()) {
+            return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
+        }
+        if (!$id) {
+            return redirect(Inermin::mainpath());
+        }
+
         $row = DB::table($this->table)->where($this->primary_key, $id)->first();
+        if (!$row) return redirect(Inermin::mainpath())->with('error', 'Record not found!');
 
         return Inertia::render('Inermin/Detail', [
             'page_title' => 'Detail ' . ucwords(str_replace('_', ' ', $this->table)),
@@ -226,8 +301,16 @@ class InerminController extends Controller
         ]);
     }
 
-    public function getDelete($id)
+    public function getDelete($id = null)
     {
+        $id = $id ?: request('id');
+        if (!$this->button_delete || !Inermin::isDelete()) {
+            return redirect(Inermin::mainpath())->with('error', 'Access Denied!');
+        }
+        if (!$id) {
+            return redirect(Inermin::mainpath());
+        }
+
         $this->hook_before_delete($id);
 
         DB::table($this->table)->where($this->primary_key, $id)->delete();
@@ -260,8 +343,96 @@ class InerminController extends Controller
 
     public function getExportData()
     {
-        $data = DB::table($this->table)->get();
-        return response()->json($data);
+        if (!$this->button_export) {
+            return redirect(Inermin::mainpath())->with('error', 'Export access denied!');
+        }
+
+        $filename = $this->table . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+        $query = DB::table($this->table);
+
+        $request = request();
+        if ($request->has('filter_column')) {
+            $filters = $request->input('filter_column');
+            if (is_array($filters)) {
+                foreach ($filters as $key => $filter) {
+                    $type = $filter['type'] ?? 'like';
+                    $val = $filter['value'] ?? null;
+                    if ($val !== null && $val !== '') {
+                        if ($type === 'like') {
+                            $query->where($key, 'like', '%' . $val . '%');
+                        } elseif ($type === '=') {
+                            $query->where($key, '=', $val);
+                        }
+                    }
+                }
+            }
+        }
+
+        $data = $query->get();
+
+        if (class_exists(\Rap2hpoutre\FastExcel\FastExcel::class)) {
+            return (new \Rap2hpoutre\FastExcel\FastExcel($data))->download($filename);
+        }
+
+        $headers = [
+            "Content-type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=" . str_replace('.xlsx', '.csv', $filename),
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            if (count($data) > 0) {
+                fputcsv($file, array_keys((array) $data[0]));
+                foreach ($data as $row) {
+                    fputcsv($file, (array) $row);
+                }
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function postImportData()
+    {
+        if (!$this->button_import) {
+            return redirect(Inermin::mainpath())->with('error', 'Import access denied!');
+        }
+
+        $request = request();
+        if (!$request->hasFile('userfile')) {
+            return redirect()->back()->with('error', 'Please choose a file to import.');
+        }
+
+        $file = $request->file('userfile');
+        $path = $file->getRealPath();
+
+        if (class_exists(\Rap2hpoutre\FastExcel\FastExcel::class)) {
+            $collections = (new \Rap2hpoutre\FastExcel\FastExcel())->import($path);
+            $inserted = 0;
+            foreach ($collections as $row) {
+                $insertData = [];
+                foreach ($row as $k => $v) {
+                    if ($k && Schema::hasColumn($this->table, $k) && $k !== $this->primary_key) {
+                        $insertData[$k] = $v;
+                    }
+                }
+                if (!empty($insertData)) {
+                    if (Schema::hasColumn($this->table, 'created_at')) {
+                        $insertData['created_at'] = now();
+                    }
+                    DB::table($this->table)->insert($insertData);
+                    $inserted++;
+                }
+            }
+            Inermin::insertLog("Imported $inserted rows into " . $this->table);
+            return redirect()->back()->with('success', "Imported $inserted rows successfully!");
+        }
+
+        return redirect()->back()->with('error', 'FastExcel package not installed.');
     }
 }
 

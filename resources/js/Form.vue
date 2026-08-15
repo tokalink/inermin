@@ -139,7 +139,8 @@ const submit = () => {
             <button
               type="submit"
               :disabled="form.processing"
-              class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-600/20 disabled:opacity-50 transition flex items-center gap-2"
+              class="px-6 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+              style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
             >
               <i class="bi bi-floppy"></i>
               <span>{{ is_edit ? 'Update Data' : 'Save Data' }}</span>

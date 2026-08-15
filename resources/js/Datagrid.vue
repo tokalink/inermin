@@ -13,6 +13,7 @@ const props = defineProps({
   permissions: Object,
   sub_module: Array,
   addaction: Array,
+  index_button: Array,
   button_selected: Array,
   index_statistic: Array,
   alerts: Array,
@@ -24,6 +25,111 @@ const currentPath = computed(() => page.url.split('?')[0])
 const searchQuery = ref(props.filters?.q || '')
 const currentOrderby = ref(props.filters?.orderby || '')
 const currentLimit = ref(props.filters?.limit || 20)
+
+// CRUDBooster Advanced Filter Drawer State
+const isFilterDrawerOpen = ref(false)
+const filterConditions = ref([])
+
+// Initialize active filters from props.filters.filter_column
+if (props.filters?.filter_column && typeof props.filters.filter_column === 'object') {
+  Object.keys(props.filters.filter_column).forEach(colName => {
+    const item = props.filters.filter_column[colName]
+    filterConditions.value.push({
+      column: colName,
+      type: item.type || 'like',
+      value: item.value || ''
+    })
+  })
+}
+
+if (!filterConditions.value.length && props.columns && props.columns.length) {
+  filterConditions.value.push({
+    column: props.columns[0].name,
+    type: 'like',
+    value: ''
+  })
+}
+
+const addFilterRow = () => {
+  if (props.columns && props.columns.length) {
+    filterConditions.value.push({
+      column: props.columns[0].name,
+      type: 'like',
+      value: ''
+    })
+  }
+}
+
+const removeFilterRow = (index) => {
+  filterConditions.value.splice(index, 1)
+}
+
+const activeFilterCount = computed(() => {
+  return filterConditions.value.filter(f => f.column && (f.value !== '' || f.type === 'empty')).length
+})
+
+const applyFilters = () => {
+  const filterObject = {}
+  filterConditions.value.forEach(f => {
+    if (f.column && (f.value !== '' || f.type === 'empty')) {
+      filterObject[f.column] = {
+        type: f.type,
+        value: f.value
+      }
+    }
+  })
+
+  router.get(currentPath.value, {
+    q: searchQuery.value,
+    orderby: currentOrderby.value,
+    limit: currentLimit.value,
+    filter_column: filterObject
+  }, { preserveState: true })
+
+  isFilterDrawerOpen.value = false
+}
+
+const resetFilters = () => {
+  filterConditions.value = []
+  if (props.columns && props.columns.length) {
+    filterConditions.value.push({
+      column: props.columns[0].name,
+      type: 'like',
+      value: ''
+    })
+  }
+
+  router.get(currentPath.value, {
+    q: searchQuery.value,
+    orderby: currentOrderby.value,
+    limit: currentLimit.value
+  }, { preserveState: true })
+
+  isFilterDrawerOpen.value = false
+}
+
+// Custom Add Action URL and Condition Parser
+const getActionUrl = (urlTemplate, row) => {
+  if (!urlTemplate) return '#'
+  let url = urlTemplate
+  Object.keys(row).forEach(key => {
+    url = url.replace(new RegExp(`\\[${key}\\]`, 'g'), row[key] !== undefined && row[key] !== null ? row[key] : '')
+  })
+  return url
+}
+
+const shouldShowAddAction = (action, row) => {
+  if (!action.showIf) return true
+  let condition = action.showIf
+  Object.keys(row).forEach(key => {
+    condition = condition.replace(new RegExp(`\\[${key}\\]`, 'g'), JSON.stringify(row[key]))
+  })
+  try {
+    return new Function('return (' + condition + ')')()
+  } catch (e) {
+    return true
+  }
+}
 
 // Bulk Select State
 const selectedRows = ref([])
@@ -38,11 +144,27 @@ const toggleSelectAll = () => {
 }
 
 const handleSearch = () => {
+  const filterObject = {}
+  filterConditions.value.forEach(f => {
+    if (f.column && (f.value !== '' || f.type === 'empty')) {
+      filterObject[f.column] = {
+        type: f.type,
+        value: f.value
+      }
+    }
+  })
+
   router.get(currentPath.value, {
     q: searchQuery.value,
     orderby: currentOrderby.value,
-    limit: currentLimit.value
+    limit: currentLimit.value,
+    filter_column: Object.keys(filterObject).length ? filterObject : undefined
   }, { preserveState: true })
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  handleSearch()
 }
 
 const handleSort = (columnName) => {
@@ -68,7 +190,7 @@ const executeBulkAction = (actionName) => {
 }
 
 const deleteRow = (id) => {
-  if (confirm('Are you sure you want to delete this row?')) {
+  if (confirm('Are you sure you want to delete this record?')) {
     router.get(currentPath.value + '/delete/' + id)
   }
 }
@@ -77,105 +199,205 @@ const isImage = (val) => {
   if (typeof val !== 'string') return false
   return val.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) != null || val.startsWith('storage/') || val.startsWith('http')
 }
+
+const filterOperators = [
+  { label: 'Contains (like)', value: 'like' },
+  { label: 'Equals (=)', value: '=' },
+  { label: 'Not Equals (!=)', value: '!=' },
+  { label: 'Does Not Contain', value: 'not like' },
+  { label: 'Greater Than (>)', value: '>' },
+  { label: 'Less Than (<)', value: '<' },
+  { label: 'Greater / Equals (>=)', value: '>=' },
+  { label: 'Less / Equals (<=)', value: '<=' },
+  { label: 'In List (comma separated)', value: 'in' },
+  { label: 'Is Empty / Null', value: 'empty' },
+]
+
+// Dropdown Action State per Row
+const activeDropdownRow = ref(null)
+const toggleDropdown = (id) => {
+  activeDropdownRow.value = activeDropdownRow.value === id ? null : id
+}
 </script>
 
 <template>
   <InerminAppLayout>
     <div class="space-y-6 font-sans">
       
-      <!-- Page Header & Action Bar -->
+      <!-- Page Header & Main Actions -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage and view data for {{ table_name }}</p>
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage records and data listing for <span class="font-bold text-slate-700 dark:text-slate-300">{{ table_name }}</span></p>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          
+          <!-- Crisp Clean Add Button -->
           <Link
             v-if="permissions.can_add"
             :href="currentPath + '/add'"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition duration-150"
+            class="px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95"
+            style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
           >
-            <i class="bi bi-plus-lg text-sm"></i>
-            <span>Add Data</span>
+            <i class="bi bi-plus-circle-fill text-sm"></i>
+            <span>Add {{ page_title }}</span>
           </Link>
 
+          <!-- Custom Index Buttons -->
+          <template v-if="index_button && index_button.length">
+            <template v-for="(btn, idx) in index_button" :key="idx">
+              <a
+                :href="btn.url"
+                :target="btn.target || '_self'"
+                :class="[
+                  'inline-flex items-center gap-2 px-4 py-2.5 font-bold text-xs rounded-xl shadow-xs transition border',
+                  btn.color === 'primary' || btn.color === 'indigo'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600'
+                    : btn.color === 'success' || btn.color === 'emerald'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
+                    : btn.color === 'danger' || btn.color === 'rose'
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600'
+                    : btn.color === 'warning' || btn.color === 'amber'
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500'
+                    : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                ]"
+              >
+                <i v-if="btn.icon" :class="[btn.icon, 'text-sm']"></i>
+                <span>{{ btn.label }}</span>
+              </a>
+            </template>
+          </template>
+
+          <!-- Advanced Filter Button -->
+          <button
+            v-if="permissions.can_filter !== false"
+            @click="isFilterDrawerOpen = true"
+            :class="[
+              'inline-flex items-center gap-2 px-4 py-2.5 font-bold text-xs rounded-xl border transition shadow-xs',
+              activeFilterCount > 0
+                ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+            ]"
+          >
+            <i class="bi bi-funnel-fill text-sm"></i>
+            <span>Filter</span>
+            <span v-if="activeFilterCount > 0" class="px-1.5 py-0.5 text-[10px] bg-indigo-600 text-white rounded-full font-bold">
+              {{ activeFilterCount }}
+            </span>
+          </button>
+
+          <!-- Export Data Button -->
           <a
             v-if="permissions.can_export"
             :href="currentPath + '/export-data'"
             target="_blank"
-            class="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 font-semibold text-xs rounded-xl shadow-sm transition"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs rounded-xl shadow-xs transition"
           >
-            <i class="bi bi-download text-sm text-emerald-500"></i>
-            <span>Export</span>
+            <i class="bi bi-download text-indigo-500"></i>
+            <span>Export Data</span>
           </a>
         </div>
       </div>
 
-      <!-- Alert Header Messages -->
-      <div v-for="(alertItem, index) in alerts" :key="index" class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-        {{ alertItem.message || alertItem }}
+      <!-- Active Filters Display Pills Bar -->
+      <div v-if="activeFilterCount > 0" class="flex items-center gap-2 flex-wrap bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 p-3 rounded-2xl">
+        <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+          <i class="bi bi-funnel text-xs"></i> Active Filters:
+        </span>
+        <template v-for="f in filterConditions" :key="f.column">
+          <div v-if="f.column && (f.value !== '' || f.type === 'empty')" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold text-xs rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+            <span class="font-mono text-[11px] text-slate-500 dark:text-slate-400">{{ f.column }}</span>
+            <span class="text-[10px] font-bold uppercase text-slate-400">{{ f.type }}</span>
+            <span class="font-bold text-slate-800 dark:text-slate-100">{{ f.type === 'empty' ? 'NULL' : f.value }}</span>
+          </div>
+        </template>
+        <button @click="resetFilters" class="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline ml-auto">
+          Clear All Filters
+        </button>
       </div>
 
-      <!-- Main Table Container Card -->
-      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
+      <!-- Search & Per Page Toolbar Card -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         
-        <!-- Toolbar (Search & Filters & Bulk Actions) -->
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+        <!-- Search Bar Input -->
+        <div class="relative w-full sm:w-80">
+          <i class="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input
+            v-model="searchQuery"
+            @keyup.enter="handleSearch"
+            type="text"
+            placeholder="Search records... (Press Enter)"
+            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl pl-9 pr-9 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 focus:outline-none transition"
+          />
+          <button
+            v-if="searchQuery"
+            @click="clearSearch"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
+          >
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        </div>
+
+        <!-- Right Options (Limit & Bulk Actions) -->
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           
           <!-- Bulk Action Options -->
           <div v-if="permissions.can_bulk_action && selectedRows.length" class="flex items-center gap-2">
-            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800">
-              {{ selectedRows.length }} Selected
-            </span>
-            
+            <!-- Custom Button Selected Actions -->
+            <template v-if="button_selected && button_selected.length">
+              <button
+                v-for="(bSelect, bIdx) in button_selected"
+                :key="bIdx"
+                @click="executeBulkAction(bSelect.name)"
+                class="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-bold rounded-xl transition"
+              >
+                <i v-if="bSelect.icon" :class="[bSelect.icon]"></i>
+                <span>{{ bSelect.label }}</span>
+              </button>
+            </template>
+
+            <!-- Bulk Delete Action -->
             <button
               @click="executeBulkAction('delete')"
-              class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold rounded-xl transition"
             >
-              <i class="bi bi-trash"></i> Delete Selected
+              <i class="bi bi-trash3-fill"></i>
+              <span>Delete Selected ({{ selectedRows.length }})</span>
             </button>
           </div>
-          <div v-else class="flex items-center gap-2 text-xs text-slate-500">
+
+          <!-- Per Page Limit -->
+          <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
             <span>Show</span>
             <select
               v-model="currentLimit"
               @change="handleSearch"
-              class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             >
               <option :value="10">10</option>
               <option :value="20">20</option>
               <option :value="50">50</option>
               <option :value="100">100</option>
             </select>
-            <span>entries</span>
           </div>
 
-          <!-- Global Search Input -->
-          <div class="relative w-full md:w-72">
-            <input
-              v-model="searchQuery"
-              @keyup.enter="handleSearch"
-              type="text"
-              placeholder="Search & hit Enter..."
-              class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-            />
-            <i class="bi bi-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-          </div>
         </div>
 
-        <!-- Data Table -->
+      </div>
+
+      <!-- Main Data Table Card -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-800/40 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                
-                <th v-if="permissions.can_bulk_action" class="p-3 w-10 text-center">
+          <table class="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+            <thead class="bg-slate-50 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th v-if="permissions.can_bulk_action" class="px-4 py-3.5 w-10 text-center">
                   <input
                     type="checkbox"
                     v-model="selectAll"
                     @change="toggleSelectAll"
-                    class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                    class="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
                   />
                 </th>
 
@@ -183,7 +405,7 @@ const isImage = (val) => {
                   v-for="col in columns"
                   :key="col.name"
                   @click="handleSort(col.name)"
-                  class="p-3 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none transition"
+                  class="px-4 py-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
                 >
                   <div class="flex items-center gap-1.5">
                     <span>{{ col.label }}</span>
@@ -191,110 +413,342 @@ const isImage = (val) => {
                   </div>
                 </th>
 
-                <th class="p-3 text-right">Actions</th>
+                <th class="px-4 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
               <tr
-                v-for="row in data.data"
-                :key="row[primary_key]"
-                class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                v-for="item in data.data"
+                :key="item[primary_key]"
+                class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition duration-150"
               >
-                <td v-if="permissions.can_bulk_action" class="p-3 text-center">
+                <!-- Bulk Checkbox -->
+                <td v-if="permissions.can_bulk_action" class="px-4 py-3.5 text-center">
                   <input
                     type="checkbox"
-                    :value="row[primary_key]"
+                    :value="item[primary_key]"
                     v-model="selectedRows"
-                    class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                    class="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
                   />
                 </td>
 
-                <td v-for="col in columns" :key="col.name" class="p-3 text-slate-700 dark:text-slate-300 font-medium">
-                  
-                  <!-- Image Column Rendering -->
-                  <div v-if="col.image || isImage(row[col.name])" class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                    <img v-if="row[col.name]" :src="row[col.name].startsWith('http') ? row[col.name] : '/' + row[col.name]" class="w-full h-full object-cover" alt="Image" />
-                    <i v-else class="bi bi-image text-slate-400"></i>
-                  </div>
-
-                  <!-- Standard Text Cell -->
-                  <span v-else class="truncate max-w-xs block">
-                    {{ row[col.name] !== null && row[col.name] !== undefined ? row[col.name] : '-' }}
-                  </span>
-
+                <!-- Data Columns -->
+                <td v-for="col in columns" :key="col.name" class="px-4 py-3.5">
+                  <template v-if="isImage(item[col.name])">
+                    <img :src="item[col.name]" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs" alt="Thumbnail" />
+                  </template>
+                  <template v-else-if="col.name === 'id' || col.name === primary_key">
+                    <span class="font-mono text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200/40 dark:border-indigo-800/40">
+                      #{{ item[col.name] }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="text-slate-800 dark:text-slate-200">{{ item[col.name] !== null ? item[col.name] : '-' }}</span>
+                  </template>
                 </td>
 
-                <!-- Action Buttons Column -->
-                <td class="p-3 text-right">
-                  <div class="inline-flex items-center gap-1">
-                    
-                    <Link
-                      v-if="permissions.can_detail"
-                      :href="currentPath + '/detail/' + row[primary_key]"
-                      class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition"
-                      title="Detail"
-                    >
-                      <i class="bi bi-eye text-sm"></i>
-                    </Link>
-
-                    <Link
-                      v-if="permissions.can_edit"
-                      :href="currentPath + '/edit/' + row[primary_key]"
-                      class="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition"
-                      title="Edit"
-                    >
-                      <i class="bi bi-pencil text-sm"></i>
-                    </Link>
-
+                <!-- Action Buttons Render according to button_action_style -->
+                <td class="px-4 py-3.5 text-right whitespace-nowrap">
+                  
+                  <!-- Dropdown Action Style -->
+                  <div v-if="permissions.button_action_style === 'dropdown'" class="relative inline-block text-left">
                     <button
-                      v-if="permissions.can_delete"
-                      @click="deleteRow(row[primary_key])"
-                      class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition"
-                      title="Delete"
+                      @click="toggleDropdown(item[primary_key])"
+                      class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-lg transition inline-flex items-center gap-1.5"
                     >
-                      <i class="bi bi-trash text-sm"></i>
+                      <span>Action</span>
+                      <i class="bi bi-chevron-down text-[10px]"></i>
                     </button>
 
+                    <div
+                      v-if="activeDropdownRow === item[primary_key]"
+                      @click="activeDropdownRow = null"
+                      class="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1 z-40 text-left space-y-1"
+                    >
+                      <!-- Custom Add Actions in Dropdown -->
+                      <template v-for="(act, idx) in addaction" :key="idx">
+                        <a
+                          v-if="shouldShowAddAction(act, item)"
+                          :href="getActionUrl(act.url, item)"
+                          :target="act.target || '_self'"
+                          class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 transition"
+                        >
+                          <i v-if="act.icon" :class="[act.icon]"></i>
+                          <span>{{ act.label }}</span>
+                        </a>
+                      </template>
+
+                      <Link
+                        v-if="permissions.can_detail"
+                        :href="currentPath + '/detail/' + item[primary_key]"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 transition"
+                      >
+                        <i class="bi bi-eye text-indigo-500"></i>
+                        <span>Detail</span>
+                      </Link>
+
+                      <Link
+                        v-if="permissions.can_edit"
+                        :href="currentPath + '/edit/' + item[primary_key]"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-600 transition"
+                      >
+                        <i class="bi bi-pencil-square text-amber-500"></i>
+                        <span>Edit</span>
+                      </Link>
+
+                      <button
+                        v-if="permissions.can_delete"
+                        @click="deleteRow(item[primary_key])"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition"
+                      >
+                        <i class="bi bi-trash3 text-rose-500"></i>
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
+
+                  <!-- Button / Icon Action Style -->
+                  <div v-else class="flex items-center justify-end gap-1.5">
+                    
+                    <!-- Custom Add Action Buttons ($this->addaction[]) -->
+                    <template v-for="(act, idx) in addaction" :key="idx">
+                      <a
+                        v-if="shouldShowAddAction(act, item)"
+                        :href="getActionUrl(act.url, item)"
+                        :target="act.target || '_self'"
+                        :title="act.title || act.label"
+                        :class="[
+                          'inline-flex items-center gap-1.5 font-bold text-xs rounded-lg transition border',
+                          permissions.button_action_style === 'button_text' || permissions.button_action_style === 'button_icon_text' ? 'px-3 py-1.5' : 'p-1.5',
+                          act.color === 'success' || act.color === 'emerald'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                            : act.color === 'danger' || act.color === 'rose'
+                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-100'
+                            : act.color === 'warning' || act.color === 'amber'
+                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100'
+                        ]"
+                      >
+                        <i v-if="act.icon && permissions.button_action_style !== 'button_text'" :class="[act.icon, 'text-sm']"></i>
+                        <span v-if="permissions.button_action_style !== 'button_icon'">{{ act.label }}</span>
+                      </a>
+                    </template>
+
+                    <!-- Detail Button -->
+                    <Link
+                      v-if="permissions.can_detail"
+                      :href="currentPath + '/detail/' + item[primary_key]"
+                      :class="[
+                        'inline-flex items-center gap-1 rounded-lg text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition',
+                        permissions.button_action_style === 'button_text' || permissions.button_action_style === 'button_icon_text' ? 'px-2.5 py-1 text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400' : 'p-1.5'
+                      ]"
+                      title="View Detail"
+                    >
+                      <i v-if="permissions.button_action_style !== 'button_text'" class="bi bi-eye text-base"></i>
+                      <span v-if="permissions.button_action_style !== 'button_icon'">Detail</span>
+                    </Link>
+
+                    <!-- Edit Button -->
+                    <Link
+                      v-if="permissions.can_edit"
+                      :href="currentPath + '/edit/' + item[primary_key]"
+                      :class="[
+                        'inline-flex items-center gap-1 rounded-lg text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition',
+                        permissions.button_action_style === 'button_text' || permissions.button_action_style === 'button_icon_text' ? 'px-2.5 py-1 text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400' : 'p-1.5'
+                      ]"
+                      title="Edit Record"
+                    >
+                      <i v-if="permissions.button_action_style !== 'button_text'" class="bi bi-pencil-square text-base"></i>
+                      <span v-if="permissions.button_action_style !== 'button_icon'">Edit</span>
+                    </Link>
+
+                    <!-- Delete Button -->
+                    <button
+                      v-if="permissions.can_delete"
+                      @click="deleteRow(item[primary_key])"
+                      :class="[
+                        'inline-flex items-center gap-1 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition',
+                        permissions.button_action_style === 'button_text' || permissions.button_action_style === 'button_icon_text' ? 'px-2.5 py-1 text-xs font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400' : 'p-1.5'
+                      ]"
+                      title="Delete Record"
+                    >
+                      <i v-if="permissions.button_action_style !== 'button_text'" class="bi bi-trash3 text-base"></i>
+                      <span v-if="permissions.button_action_style !== 'button_icon'">Delete</span>
+                    </button>
+                  </div>
+
                 </td>
               </tr>
 
-              <tr v-if="!data.data.length">
-                <td :colspan="columns.length + 2" class="p-8 text-center text-slate-400 dark:text-slate-500">
-                  <i class="bi bi-inbox text-3xl block mb-2 opacity-50"></i>
-                  No data available
+              <!-- Empty State -->
+              <tr v-if="!data.data || !data.data.length">
+                <td :colspan="columns.length + 2" class="px-4 py-12 text-center">
+                  <div class="flex flex-col items-center justify-center space-y-2">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xl">
+                      <i class="bi bi-inbox"></i>
+                    </div>
+                    <p class="font-bold text-sm text-slate-700 dark:text-slate-300">No records found</p>
+                    <p class="text-xs text-slate-400">There are no records matching your current criteria or filter options.</p>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Pagination Footer -->
-        <div v-if="data.links" class="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50 text-xs text-slate-500 dark:text-slate-400">
-          <div>
-            Showing <span class="font-bold text-slate-800 dark:text-slate-200">{{ data.from || 0 }}</span> to <span class="font-bold text-slate-800 dark:text-slate-200">{{ data.to || 0 }}</span> of <span class="font-bold text-slate-800 dark:text-slate-200">{{ data.total }}</span> entries
+        <!-- Table Pagination Footer -->
+        <div v-if="data.links" class="px-4 py-3.5 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap text-xs">
+          <div class="text-slate-500 dark:text-slate-400 font-medium">
+            Showing <span class="font-bold text-slate-700 dark:text-slate-200">{{ data.from || 0 }}</span> to <span class="font-bold text-slate-700 dark:text-slate-200">{{ data.to || 0 }}</span> of <span class="font-bold text-slate-700 dark:text-slate-200">{{ data.total }}</span> results
           </div>
 
-          <div class="flex items-center gap-1 flex-wrap">
-            <template v-for="(link, idx) in data.links" :key="idx">
-              <Link
-                v-if="link.url"
-                :href="link.url"
+          <div class="flex items-center gap-1">
+            <template v-for="(link, key) in data.links" :key="key">
+              <span
+                v-if="!link.url"
+                class="px-3 py-1.5 rounded-lg text-slate-400 bg-slate-50 dark:bg-slate-800/40 text-[11px]"
                 v-html="link.label"
+              ></span>
+              <Link
+                v-else
+                :href="link.url"
                 :class="[
-                  'px-3 py-1.5 rounded-lg font-medium transition',
+                  'px-3 py-1.5 rounded-lg font-bold text-[11px] transition',
                   link.active
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'text-white shadow-xs'
+                    : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5'
                 ]"
+                :style="link.active ? 'background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)))' : ''"
+                v-html="link.label"
               ></Link>
-              <span v-else v-html="link.label" class="px-3 py-1.5 text-slate-400 opacity-50"></span>
             </template>
           </div>
         </div>
 
       </div>
+
     </div>
+
+    <!-- CRUDBooster Style Advanced Filter Slide-over Drawer -->
+    <Transition name="fade">
+      <div v-if="isFilterDrawerOpen" @click="isFilterDrawerOpen = false" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50"></div>
+    </Transition>
+
+    <Transition name="slide-left">
+      <div
+        v-if="isFilterDrawerOpen"
+        class="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col"
+      >
+        <!-- Drawer Header -->
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <i class="bi bi-funnel-fill text-sm"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">Advanced Filter</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">CRUDBooster style column condition filter</p>
+            </div>
+          </div>
+
+          <button @click="isFilterDrawerOpen = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+            <i class="bi bi-x-lg text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Drawer Content Body -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-4">
+          <div
+            v-for="(row, idx) in filterConditions"
+            :key="idx"
+            class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-3 relative group"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">Condition #{{ idx + 1 }}</span>
+              <button @click="removeFilterRow(idx)" class="text-slate-400 hover:text-rose-500 text-xs">
+                <i class="bi bi-trash"></i> Remove
+              </button>
+            </div>
+
+            <!-- Column Select -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Column Name</label>
+              <select
+                v-model="row.column"
+                class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option v-for="col in columns" :key="col.name" :value="col.name">
+                  {{ col.label }} ({{ col.name }})
+                </option>
+              </select>
+            </div>
+
+            <!-- Operator Select -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Operator</label>
+              <select
+                v-model="row.type"
+                class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option v-for="op in filterOperators" :key="op.value" :value="op.value">
+                  {{ op.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Filter Value Input -->
+            <div v-if="row.type !== 'empty'">
+              <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Value</label>
+              <input
+                v-model="row.value"
+                type="text"
+                placeholder="Enter search value..."
+                class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <button
+            @click="addFilterRow"
+            class="w-full py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2"
+          >
+            <i class="bi bi-plus-circle"></i>
+            <span>Add Filter Condition</span>
+          </button>
+        </div>
+
+        <!-- Drawer Footer Actions -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
+          <button
+            @click="resetFilters"
+            class="px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition"
+          >
+            Reset Filters
+          </button>
+
+          <button
+            @click="applyFilters"
+            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs border border-indigo-600 transition flex items-center gap-2"
+          >
+            <i class="bi bi-check-lg"></i>
+            <span>Apply Filter</span>
+          </button>
+        </div>
+
+      </div>
+    </Transition>
+
   </InerminAppLayout>
 </template>
+
+<style scoped>
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: transform 0.3s ease-in-out;
+}
+.slide-left-enter-from,
+.slide-left-leave-to {
+  transform: translateX(100%);
+}
+</style>

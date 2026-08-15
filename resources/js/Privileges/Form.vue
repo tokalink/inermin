@@ -123,14 +123,19 @@ const submit = () => {
             <!-- Theme Color -->
             <div class="space-y-1.5">
               <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Theme Color
+                Theme Accent Color
               </label>
-              <input
+              <select
                 v-model="form.theme_color"
-                type="text"
-                placeholder="skin-blue, indigo"
-                class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
-              />
+                class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
+              >
+                <option value="amber">Amber Gold (Default)</option>
+                <option value="emerald">Emerald Green</option>
+                <option value="crimson">Crimson Red</option>
+                <option value="ocean">Ocean Blue</option>
+                <option value="violet">Royal Violet</option>
+                <option value="bronze">Warm Bronze</option>
+              </select>
             </div>
 
           </div>

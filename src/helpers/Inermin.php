@@ -42,7 +42,30 @@ class Inermin
     public static function myPhoto()
     {
         $photo = Session::get('admin_photo');
-        return $photo ? asset($photo) : asset('vendor/crudbooster/avatar.jpg');
+        if ($photo && !str_contains($photo, 'crudbooster')) {
+            if (str_starts_with($photo, 'http://') || str_starts_with($photo, 'https://')) {
+                return $photo;
+            }
+            if (file_exists(public_path(ltrim($photo, '/')))) {
+                return asset(ltrim($photo, '/'));
+            }
+        }
+
+        if (Session::get('admin_id')) {
+            try {
+                $user = DB::table('cms_users')->where('id', Session::get('admin_id'))->first();
+                if ($user && $user->photo && !str_contains($user->photo, 'crudbooster')) {
+                    if (str_starts_with($user->photo, 'http://') || str_starts_with($user->photo, 'https://')) {
+                        return $user->photo;
+                    }
+                    if (file_exists(public_path(ltrim($user->photo, '/')))) {
+                        return asset(ltrim($user->photo, '/'));
+                    }
+                }
+            } catch (\Exception $e) {}
+        }
+
+        return asset('vendor/inermin/avatar.svg');
     }
 
     public static function myPrivilegeId()
@@ -58,6 +81,45 @@ class Inermin
     public static function isSuperadmin()
     {
         return (bool) Session::get('admin_is_superadmin');
+    }
+
+    public static function parseThemeColor($themeColor = null)
+    {
+        if (!$themeColor) {
+            $themeColor = config('inermin.PRIMARY_COLOR', 'amber');
+        }
+
+        $colorStr = strtolower($themeColor);
+
+        $map = [
+            'skin-blue' => 'ocean',
+            'skin-blue-light' => 'ocean',
+            'skin-purple' => 'violet',
+            'skin-purple-light' => 'violet',
+            'skin-green' => 'emerald',
+            'skin-green-light' => 'emerald',
+            'skin-red' => 'crimson',
+            'skin-red-light' => 'crimson',
+            'skin-yellow' => 'amber',
+            'skin-yellow-light' => 'amber',
+            'indigo' => 'violet',
+            'blue' => 'ocean',
+            'purple' => 'violet',
+            'red' => 'crimson',
+            'rose' => 'crimson',
+        ];
+
+        if (isset($map[$colorStr])) {
+            return $map[$colorStr];
+        }
+
+        if (str_contains($colorStr, 'emerald') || str_contains($colorStr, 'green')) return 'emerald';
+        if (str_contains($colorStr, 'crimson') || str_contains($colorStr, 'red') || str_contains($colorStr, 'rose')) return 'crimson';
+        if (str_contains($colorStr, 'ocean') || str_contains($colorStr, 'cyan') || str_contains($colorStr, 'blue')) return 'ocean';
+        if (str_contains($colorStr, 'violet') || str_contains($colorStr, 'purple')) return 'violet';
+        if (str_contains($colorStr, 'bronze') || str_contains($colorStr, 'brown')) return 'bronze';
+
+        return 'amber';
     }
 
     public static function getModuleRole($action = 'is_read', $modulePath = null)
@@ -133,6 +195,35 @@ class Inermin
         }
     }
 
+    public static function getCurrentModule()
+    {
+        $segments = Request::segments();
+        $adminPath = config('inermin.ADMIN_PATH', 'administrator');
+        $modulePath = (count($segments) > 1 && $segments[0] == $adminPath) ? $segments[1] : '';
+
+        try {
+            return DB::table('cms_moduls')->where('path', $modulePath)->first() ?: (object)[
+                'name' => ucwords(str_replace('_', ' ', $modulePath ?: 'Module')),
+                'path' => $modulePath,
+            ];
+        } catch (\Exception $e) {
+            return (object)[
+                'name' => ucwords(str_replace('_', ' ', $modulePath ?: 'Module')),
+                'path' => $modulePath,
+            ];
+        }
+    }
+
+    public static function pk($table)
+    {
+        return 'id';
+    }
+
+    public static function parseSqlTable($table)
+    {
+        return ['table' => $table];
+    }
+
     public static function insertLog($description)
     {
         try {
@@ -176,10 +267,11 @@ class Inermin
             Route::get('/', [$controllerClass, 'getIndex']);
             Route::get('/add', [$controllerClass, 'getAdd']);
             Route::post('/add', [$controllerClass, 'postAddSave']);
-            Route::get('/edit/{id}', [$controllerClass, 'getEdit']);
-            Route::post('/edit/{id}', [$controllerClass, 'postEditSave']);
-            Route::get('/detail/{id}', [$controllerClass, 'getDetail']);
-            Route::get('/delete/{id}', [$controllerClass, 'getDelete']);
+            Route::post('/send', [$controllerClass, 'postSendMessage']);
+            Route::get('/edit/{id?}', [$controllerClass, 'getEdit']);
+            Route::post('/edit/{id?}', [$controllerClass, 'postEditSave']);
+            Route::get('/detail/{id?}', [$controllerClass, 'getDetail']);
+            Route::get('/delete/{id?}', [$controllerClass, 'getDelete']);
             Route::post('/action-selected', [$controllerClass, 'postActionSelected']);
             Route::get('/export-data', [$controllerClass, 'getExportData']);
             Route::post('/import-data', [$controllerClass, 'postImportData']);
@@ -207,4 +299,3 @@ class Inermin
         }
     }
 }
-

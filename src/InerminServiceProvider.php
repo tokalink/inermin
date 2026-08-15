@@ -18,6 +18,14 @@ class InerminServiceProvider extends ServiceProvider
         });
 
         $this->mergeConfigFrom(__DIR__ . '/configs/inermin.php', 'inermin');
+
+        // Register global class aliases: Inermin::, CRUDBooster::, and CB::
+        if (class_exists(\Illuminate\Foundation\AliasLoader::class)) {
+            $loader = \Illuminate\Foundation\AliasLoader::getInstance();
+            $loader->alias('Inermin', \Tokalink\Inermin\helpers\Inermin::class);
+            $loader->alias('CRUDBooster', \Tokalink\Inermin\helpers\Inermin::class);
+            $loader->alias('CB', \Tokalink\Inermin\helpers\Inermin::class);
+        }
     }
 
     public function boot()
@@ -73,4 +81,3 @@ class InerminServiceProvider extends ServiceProvider
         }
     }
 }
-

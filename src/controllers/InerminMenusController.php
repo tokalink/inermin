@@ -112,8 +112,9 @@ class InerminMenusController extends InerminController
         return response()->json(['status' => true]);
     }
 
-    public function getDelete($id)
+    public function getDelete($id = null)
     {
+        $id = $id ?: request('id');
         DB::table('cms_menus')->where('id', $id)->delete();
         DB::table('cms_menus')->where('parent_id', $id)->delete();
         DB::table('cms_menus_privileges')->where('id_cms_menus', $id)->delete();

@@ -83,75 +83,98 @@ const getRole = (privId) => {
   return step4Roles.value[privId]
 }
 
-const addCol = () => {
-  step2Cols.value.push({ name: '', label: '', image: false })
-}
-const removeCol = (idx) => {
-  step2Cols.value.splice(idx, 1)
-}
-
-const addFormField = () => {
-  step3Forms.value.push({ name: '', label: '', type: 'text', required: false, help: '' })
-}
-const removeFormField = (idx) => {
-  step3Forms.value.splice(idx, 1)
-}
-
 const submitStep1 = () => {
   router.post(adminPath.value + '/modules/step2', step1Form.value)
 }
 
 const submitStep2 = () => {
-  router.post(adminPath.value + '/modules/step3', { id: props.id, columns: step2Cols.value })
+  router.post(adminPath.value + '/modules/step3', {
+    id: props.id || step1Form.value.id,
+    columns: step2Cols.value,
+  })
 }
 
 const submitStep3 = () => {
-  router.post(adminPath.value + '/modules/step4', { id: props.id, forms: step3Forms.value })
+  router.post(adminPath.value + '/modules/step4', {
+    id: props.id || step1Form.value.id,
+    forms: step3Forms.value,
+  })
 }
 
 const submitStep4 = () => {
-  router.post(adminPath.value + '/modules/finish', { id: props.id, privileges: step4Roles.value })
+  router.post(adminPath.value + '/modules/finish', {
+    id: props.id || step1Form.value.id,
+    roles: step4Roles.value,
+  })
+}
+
+const addCol = () => {
+  step2Cols.value.push({ name: 'field_name', label: 'FIELD NAME', image: false })
+}
+
+const removeCol = (idx) => {
+  step2Cols.value.splice(idx, 1)
+}
+
+const addFormField = () => {
+  step3Forms.value.push({ name: 'field_name', label: 'FIELD NAME', type: 'text', required: true, help: '' })
+}
+
+const removeFormField = (idx) => {
+  step3Forms.value.splice(idx, 1)
 }
 </script>
 
 <template>
   <InerminAppLayout>
-    <div class="max-w-5xl mx-auto space-y-6 font-sans w-full">
+    <div class="space-y-6 font-sans w-full max-w-5xl mx-auto">
       
       <!-- Wizard Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Step-by-step CRUDBooster Module Generator</p>
+          <h1 class="font-display text-2xl font-bold tracking-tight text-stone-900 dark:text-white">{{ page_title }}</h1>
+          <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Step-by-step CRUDBooster Module Generator</p>
         </div>
 
         <Link
-          href="/administrator/modules"
-          class="px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 font-semibold text-xs rounded-xl shadow-sm transition"
+          :href="adminPath + '/modules'"
+          class="px-3.5 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-50 font-semibold text-xs rounded-xl shadow-sm transition"
         >
           Cancel & Back
         </Link>
       </div>
 
       <!-- Step Indicator Bar -->
-      <div class="grid grid-cols-4 gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-bold">
+      <div class="grid grid-cols-4 gap-2 card p-2 rounded-2xl border border-stone-200 dark:border-white/10 shadow-sm text-xs font-bold">
         
-        <div :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 1 ? 'bg-indigo-600 text-white shadow-md' : (step > 1 ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400' : 'text-slate-400')]">
+        <div
+          :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 1 ? 'text-white shadow-md' : (step > 1 ? 'bg-stone-100 dark:bg-white/5 text-[rgb(var(--accent-rgb))]' : 'text-stone-400')]"
+          :style="step === 1 ? 'background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)))' : ''"
+        >
           <span class="w-5 h-5 rounded-full border border-current flex items-center justify-center text-[10px]">1</span>
           <span>Module Info</span>
         </div>
 
-        <div :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 2 ? 'bg-indigo-600 text-white shadow-md' : (step > 2 ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400' : 'text-slate-400')]">
+        <div
+          :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 2 ? 'text-white shadow-md' : (step > 2 ? 'bg-stone-100 dark:bg-white/5 text-[rgb(var(--accent-rgb))]' : 'text-stone-400')]"
+          :style="step === 2 ? 'background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)))' : ''"
+        >
           <span class="w-5 h-5 rounded-full border border-current flex items-center justify-center text-[10px]">2</span>
           <span>Table Columns</span>
         </div>
 
-        <div :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 3 ? 'bg-indigo-600 text-white shadow-md' : (step > 3 ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400' : 'text-slate-400')]">
+        <div
+          :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 3 ? 'text-white shadow-md' : (step > 3 ? 'bg-stone-100 dark:bg-white/5 text-[rgb(var(--accent-rgb))]' : 'text-stone-400')]"
+          :style="step === 3 ? 'background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)))' : ''"
+        >
           <span class="w-5 h-5 rounded-full border border-current flex items-center justify-center text-[10px]">3</span>
           <span>Form Fields</span>
         </div>
 
-        <div :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 4 ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400']">
+        <div
+          :class="['py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition', step === 4 ? 'text-white shadow-md' : 'text-stone-400']"
+          :style="step === 4 ? 'background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)))' : ''"
+        >
           <span class="w-5 h-5 rounded-full border border-current flex items-center justify-center text-[10px]">4</span>
           <span>Privileges & Finish</span>
         </div>
@@ -159,49 +182,51 @@ const submitStep4 = () => {
       </div>
 
       <!-- Step 1: Module Info -->
-      <div v-if="step === 1" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm">
+      <div v-if="step === 1" class="card rounded-2xl p-6 shadow-sm">
         <form @submit.prevent="submitStep1" class="space-y-4">
           
           <div>
-            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Module Name *</label>
+            <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Module Name *</label>
             <input
               v-model="step1Form.name"
               type="text"
               required
               placeholder="e.g. Products, Absen Data"
-              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100"
+              class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Database Table *</label>
+            <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Database Table *</label>
             <select
               v-model="step1Form.table_name"
               required
-              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100"
+              class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
             >
-              <option v-for="t in tables" :key="t" :value="t">{{ t }}</option>
+              <option v-for="tbl in tables" :key="tbl" :value="tbl">{{ tbl }}</option>
             </select>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Icon (Bootstrap Icon Class)</label>
-            <input
-              v-model="step1Form.icon"
-              type="text"
-              placeholder="bi bi-boxes, bi bi-grid, bi bi-tags"
-              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100"
-            />
-          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Bootstrap Icon Class</label>
+              <input
+                v-model="step1Form.icon"
+                type="text"
+                placeholder="e.g. bi bi-box-seam"
+                class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
+              />
+            </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Path Slug (Optional)</label>
-            <input
-              v-model="step1Form.path"
-              type="text"
-              placeholder="Auto-generated if empty (e.g. products)"
-              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100"
-            />
+            <div>
+              <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">URL Slug / Path</label>
+              <input
+                v-model="step1Form.path"
+                type="text"
+                placeholder="Auto-generated if empty (e.g. products)"
+                class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
+              />
+            </div>
           </div>
 
           <div v-if="!id" class="flex items-center gap-2 pt-2">
@@ -209,15 +234,16 @@ const submitStep4 = () => {
               type="checkbox"
               id="create_menu"
               v-model="step1Form.create_menu"
-              class="rounded border-slate-300 text-indigo-600"
+              class="rounded border-stone-300 text-[rgb(var(--accent-rgb))] focus:ring-[rgb(var(--accent-rgb))]"
             />
-            <label for="create_menu" class="text-xs font-bold text-slate-700 dark:text-slate-300">Auto Create Menu Entry for this Module</label>
+            <label for="create_menu" class="text-xs font-bold text-stone-700 dark:text-stone-300">Auto Create Menu Entry for this Module</label>
           </div>
 
-          <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+          <div class="pt-4 border-t border-stone-200 dark:border-white/10 flex justify-end">
             <button
               type="submit"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-2"
+              class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
+              style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
             >
               <span>Save & Proceed to Step 2</span>
               <i class="bi bi-arrow-right"></i>
@@ -228,29 +254,29 @@ const submitStep4 = () => {
       </div>
 
       <!-- Step 2: Display Columns -->
-      <div v-if="step === 2" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
+      <div v-if="step === 2" class="card rounded-2xl p-6 shadow-sm space-y-4">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Configure Table Datagrid Columns</h3>
-          <button @click="addCol" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-lg">
+          <h3 class="font-display font-bold text-sm text-stone-900 dark:text-white">Configure Table Datagrid Columns</h3>
+          <button @click="addCol" class="px-3 py-1.5 bg-stone-100 dark:bg-white/10 text-stone-700 dark:text-stone-200 font-bold text-xs rounded-lg hover:bg-stone-200 transition">
             + Add Column
           </button>
         </div>
 
         <div class="space-y-3">
-          <div v-for="(col, idx) in step2Cols" :key="idx" class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div v-for="(col, idx) in step2Cols" :key="idx" class="flex items-center gap-3 p-3 bg-stone-50 dark:bg-white/[0.02] rounded-xl border border-stone-200 dark:border-white/10">
             <div class="w-1/3">
-              <label class="block text-[11px] font-bold text-slate-500 mb-0.5">Field Name</label>
-              <input v-model="col.name" type="text" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100" />
+              <label class="block text-[11px] font-bold text-stone-400 mb-0.5">Field Name</label>
+              <input v-model="col.name" type="text" class="w-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 dark:text-stone-100" />
             </div>
 
             <div class="w-1/3">
-              <label class="block text-[11px] font-bold text-slate-500 mb-0.5">Display Label</label>
-              <input v-model="col.label" type="text" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100" />
+              <label class="block text-[11px] font-bold text-stone-400 mb-0.5">Display Label</label>
+              <input v-model="col.label" type="text" class="w-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 dark:text-stone-100" />
             </div>
 
             <div class="flex items-center gap-2 pt-4">
-              <input type="checkbox" :id="'img_'+idx" v-model="col.image" class="rounded border-slate-300 text-indigo-600" />
-              <label :for="'img_'+idx" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Is Image</label>
+              <input type="checkbox" :id="'img_'+idx" v-model="col.image" class="rounded border-stone-300 text-[rgb(var(--accent-rgb))]" />
+              <label :for="'img_'+idx" class="text-xs font-semibold text-stone-700 dark:text-stone-300">Is Image</label>
             </div>
 
             <button @click="removeCol(idx)" class="ml-auto p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
@@ -259,8 +285,12 @@ const submitStep4 = () => {
           </div>
         </div>
 
-        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-          <button @click="submitStep2" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-2">
+        <div class="pt-4 border-t border-stone-200 dark:border-white/10 flex justify-end">
+          <button
+            @click="submitStep2"
+            class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
+            style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
+          >
             <span>Save & Proceed to Step 3</span>
             <i class="bi bi-arrow-right"></i>
           </button>
@@ -268,29 +298,29 @@ const submitStep4 = () => {
       </div>
 
       <!-- Step 3: Form Fields -->
-      <div v-if="step === 3" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
+      <div v-if="step === 3" class="card rounded-2xl p-6 shadow-sm space-y-4">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Configure Add & Edit Form Fields</h3>
-          <button @click="addFormField" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-lg">
+          <h3 class="font-display font-bold text-sm text-stone-900 dark:text-white">Configure Add & Edit Form Fields</h3>
+          <button @click="addFormField" class="px-3 py-1.5 bg-stone-100 dark:bg-white/10 text-stone-700 dark:text-stone-200 font-bold text-xs rounded-lg hover:bg-stone-200 transition">
             + Add Form Field
           </button>
         </div>
 
         <div class="space-y-3">
-          <div v-for="(form, idx) in step3Forms" :key="idx" class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div v-for="(form, idx) in step3Forms" :key="idx" class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-stone-50 dark:bg-white/[0.02] rounded-xl border border-stone-200 dark:border-white/10">
             <div class="w-full sm:w-1/4">
-              <label class="block text-[11px] font-bold text-slate-500 mb-0.5">Field Name</label>
-              <input v-model="form.name" type="text" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100" />
+              <label class="block text-[11px] font-bold text-stone-400 mb-0.5">Field Name</label>
+              <input v-model="form.name" type="text" class="w-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 dark:text-stone-100" />
             </div>
 
             <div class="w-full sm:w-1/4">
-              <label class="block text-[11px] font-bold text-slate-500 mb-0.5">Field Label</label>
-              <input v-model="form.label" type="text" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100" />
+              <label class="block text-[11px] font-bold text-stone-400 mb-0.5">Field Label</label>
+              <input v-model="form.label" type="text" class="w-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 dark:text-stone-100" />
             </div>
 
             <div class="w-full sm:w-1/4">
-              <label class="block text-[11px] font-bold text-slate-500 mb-0.5">Input Type</label>
-              <select v-model="form.type" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100">
+              <label class="block text-[11px] font-bold text-stone-400 mb-0.5">Input Type</label>
+              <select v-model="form.type" class="w-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-900 dark:text-stone-100">
                 <option value="text">Text</option>
                 <option value="email">Email</option>
                 <option value="password">Password</option>
@@ -304,8 +334,8 @@ const submitStep4 = () => {
             </div>
 
             <div class="flex items-center gap-2 pt-4">
-              <input type="checkbox" :id="'req_'+idx" v-model="form.required" class="rounded border-slate-300 text-indigo-600" />
-              <label :for="'req_'+idx" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Required</label>
+              <input type="checkbox" :id="'req_'+idx" v-model="form.required" class="rounded border-stone-300 text-[rgb(var(--accent-rgb))]" />
+              <label :for="'req_'+idx" class="text-xs font-semibold text-stone-700 dark:text-stone-300">Required</label>
             </div>
 
             <button @click="removeFormField(idx)" class="ml-auto p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
@@ -314,8 +344,12 @@ const submitStep4 = () => {
           </div>
         </div>
 
-        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-          <button @click="submitStep3" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition flex items-center gap-2">
+        <div class="pt-4 border-t border-stone-200 dark:border-white/10 flex justify-end">
+          <button
+            @click="submitStep3"
+            class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
+            style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
+          >
             <span>Save & Proceed to Step 4</span>
             <i class="bi bi-arrow-right"></i>
           </button>
@@ -323,13 +357,13 @@ const submitStep4 = () => {
       </div>
 
       <!-- Step 4: Privileges & Finish -->
-      <div v-if="step === 4" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
-        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Configure Privilege Permissions</h3>
+      <div v-if="step === 4" class="card rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 class="font-display font-bold text-sm text-stone-900 dark:text-white">Configure Privilege Permissions</h3>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
-              <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+              <tr class="border-b border-stone-200 dark:border-white/10 bg-stone-50 dark:bg-white/[0.02] text-[10px] font-bold text-stone-400 uppercase">
                 <th class="p-3">Privilege Name</th>
                 <th class="p-3 text-center">Is Visible</th>
                 <th class="p-3 text-center">Can Create</th>
@@ -339,21 +373,25 @@ const submitStep4 = () => {
               </tr>
             </thead>
 
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody class="divide-y divide-stone-100 dark:divide-white/5">
               <tr v-for="priv in privileges" :key="priv.id">
-                <td class="p-3 font-bold text-slate-900 dark:text-white">{{ priv.name }}</td>
-                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_visible" class="rounded text-indigo-600" /></td>
-                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_create" class="rounded text-indigo-600" /></td>
-                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_read" class="rounded text-indigo-600" /></td>
-                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_edit" class="rounded text-indigo-600" /></td>
-                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_delete" class="rounded text-indigo-600" /></td>
+                <td class="p-3 font-bold text-stone-900 dark:text-white">{{ priv.name }}</td>
+                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_visible" class="rounded text-[rgb(var(--accent-rgb))]" /></td>
+                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_create" class="rounded text-[rgb(var(--accent-rgb))]" /></td>
+                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_read" class="rounded text-[rgb(var(--accent-rgb))]" /></td>
+                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_edit" class="rounded text-[rgb(var(--accent-rgb))]" /></td>
+                <td class="p-3 text-center"><input type="checkbox" v-model="getRole(priv.id).is_delete" class="rounded text-[rgb(var(--accent-rgb))]" /></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-          <button @click="submitStep4" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2">
+        <div class="pt-4 border-t border-stone-200 dark:border-white/10 flex justify-end">
+          <button
+            @click="submitStep4"
+            class="px-6 py-2.5 text-white font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
+            style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
+          >
             <i class="bi bi-check-lg text-base"></i>
             <span>Finish Module Generation</span>
           </button>

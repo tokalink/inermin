@@ -18,7 +18,7 @@ class InerminShareInertiaData
                 'app_name' => config('inermin.APP_NAME', 'Inermin Admin'),
                 'admin_path' => config('inermin.ADMIN_PATH', 'administrator'),
                 'default_theme' => config('inermin.DEFAULT_THEME', 'dark'),
-                'primary_color' => config('inermin.PRIMARY_COLOR', 'indigo'),
+                'primary_color' => Inermin::parseThemeColor(Session::get('admin_theme_color') ?: config('inermin.PRIMARY_COLOR', 'indigo')),
                 'auth' => [
                     'user' => Session::get('admin_id') ? [
                         'id' => Session::get('admin_id'),

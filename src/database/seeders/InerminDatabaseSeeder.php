@@ -16,7 +16,7 @@ class InerminDatabaseSeeder extends Seeder
                 'id' => 1,
                 'name' => 'Super Admin',
                 'is_superadmin' => 1,
-                'theme_color' => 'skin-blue',
+                'theme_color' => 'theme-indigo',
                 'created_at' => now(),
             ]);
         }
@@ -26,7 +26,7 @@ class InerminDatabaseSeeder extends Seeder
             DB::table('cms_users')->insert([
                 'id' => 1,
                 'name' => 'Super Admin',
-                'email' => 'admin@crudbooster.com',
+                'email' => 'admin@inermin.com',
                 'password' => Hash::make('123456'),
                 'id_cms_privileges' => 1,
                 'status' => 'Active',

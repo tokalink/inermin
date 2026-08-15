@@ -41,13 +41,22 @@ class InerminInstallCommand extends Command
             $this->info('Published Vue 3 Pages & Layouts to resources/js/Pages/Inermin');
         }
 
+        // Publish Static Assets (Default Avatar, Icons)
+        $assetsSource = __DIR__ . '/../../assets';
+        $assetsTarget = public_path('vendor/inermin');
+        if (File::exists($assetsSource)) {
+            File::ensureDirectoryExists($assetsTarget);
+            File::copyDirectory($assetsSource, $assetsTarget);
+            $this->info('Published assets to public/vendor/inermin');
+        }
+
         // 5. Install & Configure Inertia / Vue NPM Dependencies
         if (!$this->option('skip-npm')) {
             $this->installNpmDependencies();
         }
 
         $this->info('Inermin SPA Admin installed successfully!');
-        $this->info('Superadmin Login: admin@crudbooster.com / 123456');
+        $this->info('Superadmin Login: admin@inermin.com / 123456');
     }
 
     protected function installNpmDependencies()
