@@ -224,6 +224,11 @@ class InerminController extends Controller
         foreach ($items as &$row) {
             foreach ($this->col as $idx => $col) {
                 $fieldName = $col['name'] ?? null;
+
+                if ($fieldName && isset($row->{$fieldName})) {
+                    $row->{'_raw_' . $fieldName} = $row->{$fieldName};
+                }
+
                 $aliasName = $fieldName . '_label';
                 if (isset($row->{$aliasName}) && $row->{$aliasName} !== null) {
                     $row->{$fieldName} = $row->{$aliasName};

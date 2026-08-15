@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 
 class InerminApiEngineController extends Controller
 {
-    public function handleApi(Request $request, $permalink)
+    public function handleApi(Request $request, $permalink, $id = null)
     {
         try {
             $api = DB::table('cms_apicustom')->where('permalink', $permalink)->first();
@@ -58,17 +58,26 @@ class InerminApiEngineController extends Controller
 
             switch ($action) {
                 case 'detail':
-                    $id = $request->input('id');
-                    if (!$id) {
+                    $targetId = $id ?: $request->input('id');
+                    if (!$targetId) {
+                        $sampleRow = DB::table($table)->first();
+                        if ($sampleRow) {
+                            return response()->json([
+                                'api_status' => 1,
+                                'api_message' => 'success (showing first record as sample because no id parameter was passed)',
+                                'data' => $sampleRow,
+                            ]);
+                        }
                         return response()->json([
                             'api_status' => 0,
-                            'api_message' => 'Parameter id is required!',
+                            'api_message' => 'Parameter id is required! Usage: /api/' . $permalink . '?id=1 or /api/' . $permalink . '/1',
                         ], 400);
                     }
-                    $row = DB::table($table)->where('id', $id)->first();
+
+                    $row = DB::table($table)->where('id', $targetId)->first();
                     return response()->json([
                         'api_status' => $row ? 1 : 0,
-                        'api_message' => $row ? 'success' : 'Record not found',
+                        'api_message' => $row ? 'success' : "Record with id '{$targetId}' not found in '{$table}'",
                         'data' => $row,
                     ]);
 

@@ -129,7 +129,10 @@ const getActionUrl = (urlTemplate, row) => {
   if (!urlTemplate) return '#'
   let url = urlTemplate
   Object.keys(row).forEach(key => {
-    url = url.replace(new RegExp(`\\[${key}\\]`, 'g'), row[key] !== undefined && row[key] !== null ? row[key] : '')
+    if (!key.startsWith('_raw_')) {
+      const rawVal = row['_raw_' + key] !== undefined && row['_raw_' + key] !== null ? row['_raw_' + key] : row[key]
+      url = url.replace(new RegExp(`\\[${key}\\]`, 'g'), rawVal !== undefined && rawVal !== null ? rawVal : '')
+    }
   })
   return url
 }

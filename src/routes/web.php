@@ -17,7 +17,7 @@ use Tokalink\Inermin\middleware\InerminAuthMiddleware;
 use Tokalink\Inermin\middleware\InerminShareInertiaData;
 
 // Public & Authenticated Custom API Generator Endpoints
-Route::match(['get', 'post', 'put', 'delete'], '/api/{permalink}', [InerminApiEngineController::class, 'handleApi']);
+Route::match(['get', 'post', 'put', 'delete'], '/api/{permalink}/{id?}', [InerminApiEngineController::class, 'handleApi']);
 
 $prefix = config('inermin.ADMIN_PATH', 'administrator');
 
