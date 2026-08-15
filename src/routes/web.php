@@ -13,6 +13,7 @@ use Tokalink\Inermin\controllers\InerminApiController;
 use Tokalink\Inermin\controllers\InerminEmailController;
 use Tokalink\Inermin\controllers\InerminStatisticController;
 use Tokalink\Inermin\controllers\InerminApiEngineController;
+use Tokalink\Inermin\controllers\InerminAppsController;
 use Tokalink\Inermin\middleware\InerminAuthMiddleware;
 use Tokalink\Inermin\middleware\InerminShareInertiaData;
 
@@ -38,6 +39,13 @@ Route::group([
         Route::match(['get', 'post'], '/lov-data', [InerminApiController::class, 'getLovData']);
 
         // Built-in System Modules
+        Route::get('/apps', [InerminAppsController::class, 'getIndex']);
+        Route::get('/apps/add', [InerminAppsController::class, 'getAdd']);
+        Route::post('/apps/add', [InerminAppsController::class, 'postAddSave']);
+        Route::get('/apps/edit/{id}', [InerminAppsController::class, 'getEdit']);
+        Route::post('/apps/edit/{id}', [InerminAppsController::class, 'postEditSave']);
+        Route::get('/apps/delete/{id}', [InerminAppsController::class, 'getDelete']);
+
         Route::get('/users', [InerminUsersController::class, 'getIndex']);
         Route::get('/users/add', [InerminUsersController::class, 'getAdd']);
         Route::post('/users/add', [InerminUsersController::class, 'postAddSave']);

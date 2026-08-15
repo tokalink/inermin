@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import AppSwitcher from './Components/AppSwitcher.vue'
 
 const page = usePage()
 
@@ -566,6 +567,9 @@ onMounted(() => {
             <i v-if="isDark" class="bi bi-sun-fill text-base text-amber-400"></i>
             <i v-else class="bi bi-moon-stars-fill text-base text-stone-700"></i>
           </button>
+
+          <!-- App Switcher Launcher -->
+          <AppSwitcher />
 
           <!-- Interactive Notification Bell Dropdown -->
           <div class="relative">
