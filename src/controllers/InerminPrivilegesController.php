@@ -31,6 +31,10 @@ class InerminPrivilegesController extends InerminController
 
     public function getIndex(Request $request = null)
     {
+        if (!Inermin::isSuperadmin()) {
+            return redirect(Inermin::adminPath())->with('error', 'Access Denied! Only superadmin accounts can manage privileges.');
+        }
+
         $this->cbInit();
 
         $privileges = DB::table('cms_privileges')->orderBy('id', 'asc')->get();
@@ -54,6 +58,10 @@ class InerminPrivilegesController extends InerminController
 
     public function getAdd()
     {
+        if (!Inermin::isSuperadmin()) {
+            return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
         $modules = DB::table('cms_moduls')
             ->where('is_protected', 0)
             ->whereNull('deleted_at')
@@ -82,6 +90,10 @@ class InerminPrivilegesController extends InerminController
 
     public function postAddSave()
     {
+        if (!Inermin::isSuperadmin()) {
+            return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
         $request = request();
         $name = $request->input('name');
         $is_superadmin = (int) $request->input('is_superadmin', 0);
@@ -103,6 +115,10 @@ class InerminPrivilegesController extends InerminController
 
     public function getEdit($id = null)
     {
+        if (!Inermin::isSuperadmin()) {
+            return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
         $id = $id ?: request('id');
         $row = DB::table('cms_privileges')->where('id', $id)->first();
         if (!$row)

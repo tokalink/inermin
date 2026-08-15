@@ -9,6 +9,10 @@ class InerminUsersController extends InerminController
 {
     public function cbInit()
     {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
         $this->table = 'cms_users';
         $this->primary_key = 'id';
         $this->title_field = 'name';

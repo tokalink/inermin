@@ -92,7 +92,19 @@ class InerminShareInertiaData
                 ->where('is_dashboard', 0);
 
             if (! $isSuperadmin) {
-                $query->whereRaw("cms_menus.id IN (select id_cms_menus from cms_menus_privileges where id_cms_privileges = ?)", [$privId]);
+                $query->where(function ($q) use ($privId) {
+                    $q->whereRaw("cms_menus.id IN (select id_cms_menus from cms_menus_privileges where id_cms_privileges = ?)", [$privId])
+                      ->orWhereRaw("cms_menus.path IN (
+                          select m.path from cms_moduls m 
+                          join cms_privileges_roles r on r.id_cms_moduls = m.id 
+                          where r.id_cms_privileges = ? and r.is_visible = 1
+                      )", [$privId])
+                      ->orWhereRaw("cms_menus.path IN (
+                          select concat(m.controller, 'GetIndex') from cms_moduls m 
+                          join cms_privileges_roles r on r.id_cms_moduls = m.id 
+                          where r.id_cms_privileges = ? and r.is_visible = 1
+                      )", [$privId]);
+                });
             }
 
             $menus = $query->orderBy('sorting', 'asc')->get();

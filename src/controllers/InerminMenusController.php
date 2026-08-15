@@ -19,6 +19,10 @@ class InerminMenusController extends InerminController
 
     public function getIndex(\Illuminate\Http\Request $request = null)
     {
+        if (!Inermin::isSuperadmin()) {
+            return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
         $data = [];
         $data['page_title'] = 'Menu Management';
         

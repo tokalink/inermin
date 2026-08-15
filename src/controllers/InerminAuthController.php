@@ -38,7 +38,7 @@ class InerminAuthController extends Controller
             $priv = DB::table('cms_privileges')->where('id', $user->id_cms_privileges)->first();
 
             Session::put('admin_id', $user->id);
-            Session::put('admin_is_superadmin', $priv ? $priv->is_superadmin : 0);
+            Session::put('admin_is_superadmin', $priv ? (int) $priv->is_superadmin : 0);
             Session::put('admin_name', $user->name);
             $photo = ($user->photo && !str_contains($user->photo, 'crudbooster')) ? $user->photo : asset('vendor/inermin/avatar.svg');
             Session::put('admin_photo', $photo);
