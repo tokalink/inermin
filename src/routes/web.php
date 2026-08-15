@@ -14,6 +14,7 @@ use Tokalink\Inermin\controllers\InerminEmailController;
 use Tokalink\Inermin\controllers\InerminStatisticController;
 use Tokalink\Inermin\controllers\InerminApiEngineController;
 use Tokalink\Inermin\controllers\InerminAppsController;
+use Tokalink\Inermin\controllers\InerminTenantsController;
 use Tokalink\Inermin\middleware\InerminAuthMiddleware;
 use Tokalink\Inermin\middleware\InerminShareInertiaData;
 
@@ -39,6 +40,15 @@ Route::group([
         Route::match(['get', 'post'], '/lov-data', [InerminApiController::class, 'getLovData']);
 
         // Built-in System Modules
+        Route::get('/tenants', [InerminTenantsController::class, 'getIndex']);
+        Route::get('/tenants/add', [InerminTenantsController::class, 'getAdd']);
+        Route::post('/tenants/add', [InerminTenantsController::class, 'postAddSave']);
+        Route::get('/tenants/edit/{id}', [InerminTenantsController::class, 'getEdit']);
+        Route::post('/tenants/edit/{id}', [InerminTenantsController::class, 'postEditSave']);
+        Route::get('/tenants/delete/{id}', [InerminTenantsController::class, 'getDelete']);
+        Route::get('/tenants/impersonate/{id}', [InerminTenantsController::class, 'getImpersonate']);
+        Route::get('/tenants/stop-impersonate', [InerminTenantsController::class, 'getStopImpersonate']);
+
         Route::get('/apps', [InerminAppsController::class, 'getIndex']);
         Route::get('/apps/add', [InerminAppsController::class, 'getAdd']);
         Route::post('/apps/add', [InerminAppsController::class, 'postAddSave']);

@@ -31,6 +31,7 @@ class InerminShareInertiaData
                 ],
                 'menu' => $this->getMenuTree(),
                 'notifications' => $this->getNotifications(),
+                'impersonate_tenant_name' => Session::get('impersonate_tenant_name'),
                 'flash' => [
                     'success' => Session::get('success'),
                     'error' => Session::get('error'),
