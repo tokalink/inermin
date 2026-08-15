@@ -51,7 +51,7 @@ class InerminController extends Controller
     }
 
     /**
-     * Process $this->form schema and automatically fetch datatable relationship options
+     * Process $this->form schema and automatically fetch datatable relationship options & LOV labels
      */
     protected function processFormSchema()
     {
@@ -86,6 +86,69 @@ class InerminController extends Controller
             }
         }
         return $forms;
+    }
+
+    /**
+     * AJAX Endpoint to fetch List of Values (LOV) data
+     */
+    public function getLovData(\Illuminate\Http\Request $request)
+    {
+        $table = $request->input('table');
+        $columnValue = $request->input('column_value', 'id');
+        $columnLabel = $request->input('column_label', 'name');
+        $rawColumns = $request->input('columns', $columnLabel);
+        $where = $request->input('where');
+        $search = $request->input('q');
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 8);
+
+        if (!$table || !Schema::hasTable($table)) {
+            return response()->json(['data' => [], 'total' => 0, 'last_page' => 1]);
+        }
+
+        $colsArray = array_map('trim', explode(',', $rawColumns));
+        if (!in_array($columnValue, $colsArray)) {
+            array_unshift($colsArray, $columnValue);
+        }
+        if (!in_array($columnLabel, $colsArray)) {
+            $colsArray[] = $columnLabel;
+        }
+
+        $colsArray = array_unique($colsArray);
+        $validColumns = Schema::getColumnListing($table);
+        $colsArray = array_values(array_intersect($colsArray, $validColumns));
+
+        if (empty($colsArray)) {
+            $colsArray = [$columnValue];
+        }
+
+        $query = DB::table($table)->select($colsArray);
+
+        if ($where) {
+            $query->whereRaw($where);
+        }
+
+        if (!empty($search)) {
+            $query->where(function ($w) use ($colsArray, $search) {
+                foreach ($colsArray as $idx => $c) {
+                    if ($idx === 0) {
+                        $w->where($c, 'like', "%{$search}%");
+                    } else {
+                        $w->orWhere($c, 'like', "%{$search}%");
+                    }
+                }
+            });
+        }
+
+        $result = $query->paginate($limit, ['*'], 'page', $page);
+
+        return response()->json([
+            'data' => $result->items(),
+            'current_page' => $result->currentPage(),
+            'last_page' => $result->lastPage(),
+            'total' => $result->total(),
+            'columns' => $colsArray,
+        ]);
     }
 
     /**

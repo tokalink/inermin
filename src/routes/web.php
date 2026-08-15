@@ -35,6 +35,7 @@ Route::group([
         Route::get('/logout', [InerminAuthController::class, 'getLogout'])->name('inermin.logout');
         Route::get('/profile', [InerminUsersController::class, 'getProfile'])->name('inermin.profile');
         Route::post('/profile', [InerminUsersController::class, 'postSaveProfile']);
+        Route::match(['get', 'post'], '/lov-data', [InerminApiController::class, 'getLovData']);
 
         // Built-in System Modules
         Route::get('/users', [InerminUsersController::class, 'getIndex']);

@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useForm, Link, usePage } from '@inertiajs/vue3'
 import InerminAppLayout from './InerminAppLayout.vue'
+import LOVModal from './LOVModal.vue'
 
 const props = defineProps({
   page_title: String,
@@ -32,6 +33,51 @@ schema.value.forEach(field => {
 const form = useForm(initialData)
 const previews = ref({})
 const isDragging = ref({})
+
+// LOV State
+const showLovModal = ref(false)
+const activeLovField = ref(null)
+const lovDisplayLabels = ref({})
+
+onMounted(() => {
+  // Initialize initial LOV labels from row object if present
+  schema.value.forEach((field) => {
+    if (field.type === 'lov' && props.row) {
+      if (props.row[field.name + '_label']) {
+        lovDisplayLabels.value[field.name] = props.row[field.name + '_label']
+      }
+    }
+  })
+})
+
+const openLovModal = (field) => {
+  activeLovField.value = field
+  showLovModal.value = true
+}
+
+const handleLovSelect = (selectedRow) => {
+  if (!activeLovField.value || !selectedRow) return
+  const field = activeLovField.value
+  const valKey = field.lov_value || 'id'
+  const labelKey = field.lov_label || 'name'
+
+  form[field.name] = selectedRow[valKey]
+  lovDisplayLabels.value[field.name] = selectedRow[labelKey] || selectedRow[valKey]
+
+  // Handle LOV Autofill Mapping
+  if (field.lov_autofill && typeof field.lov_autofill === 'object') {
+    Object.entries(field.lov_autofill).forEach(([srcCol, targetFieldName]) => {
+      if (selectedRow[srcCol] !== undefined && form[targetFieldName] !== undefined) {
+        form[targetFieldName] = selectedRow[srcCol]
+      }
+    })
+  }
+}
+
+const clearLov = (fieldName) => {
+  form[fieldName] = ''
+  delete lovDisplayLabels.value[fieldName]
+}
 
 // File Upload Handler
 const handleFileChange = (e, fieldName) => {
@@ -301,6 +347,40 @@ const submitForm = () => {
                   />
                 </div>
 
+                <!-- 8. LIST OF VALUES (LOV) PICKER -->
+                <div v-else-if="field.type === 'lov'" class="relative flex items-center gap-2">
+                  <input
+                    type="text"
+                    readonly
+                    :value="lovDisplayLabels[field.name] || (row && row[field.name + '_label'] ? row[field.name + '_label'] : form[field.name])"
+                    :placeholder="field.placeholder || 'Click browse to select ' + field.label"
+                    :disabled="is_detail || field.readonly || field.disabled"
+                    @click="openLovModal(field)"
+                    class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white font-medium cursor-pointer placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] transition"
+                  />
+                  
+                  <button
+                    type="button"
+                    :disabled="is_detail || field.readonly || field.disabled"
+                    @click="openLovModal(field)"
+                    class="px-3.5 py-2.5 rounded-2xl text-xs font-bold text-white shadow-md transition shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+                    style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep)));"
+                  >
+                    <i class="bi bi-search"></i>
+                    <span>Browse</span>
+                  </button>
+
+                  <button
+                    v-if="form[field.name] && !is_detail && !field.readonly && !field.disabled"
+                    type="button"
+                    @click="clearLov(field.name)"
+                    class="px-3 py-2.5 rounded-2xl text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200/50 dark:border-rose-800/40 transition shrink-0"
+                    title="Clear LOV"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+
                 <!-- Helper Text -->
                 <p v-if="field.help" class="text-[11px] text-stone-400 font-medium flex items-center gap-1 mt-1">
                   <i class="bi bi-info-circle text-[10px]"></i>
@@ -344,6 +424,20 @@ const submitForm = () => {
         </form>
 
       </div>
+
+      <!-- LOV Lookup Modal Dialog Component -->
+      <LOVModal
+        v-if="activeLovField"
+        :show="showLovModal"
+        :title="'Select ' + (activeLovField.label || 'Value')"
+        :table="activeLovField.lov_table"
+        :value-column="activeLovField.lov_value || 'id'"
+        :label-column="activeLovField.lov_label || 'name'"
+        :columns="activeLovField.lov_columns || (activeLovField.lov_label || 'name')"
+        :where="activeLovField.lov_where || ''"
+        @close="showLovModal = false"
+        @select="handleLovSelect"
+      />
 
     </div>
   </InerminAppLayout>
