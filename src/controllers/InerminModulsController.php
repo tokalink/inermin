@@ -113,16 +113,25 @@ class InerminModulsController extends InerminController
                 ]);
             }
 
-            // Grant superadmin privilege role
-            DB::table('cms_privileges_roles')->insert([
-                'id_cms_moduls' => $id,
-                'id_cms_privileges' => Inermin::myPrivilegeId(),
-                'is_visible' => 1,
-                'is_create' => 1,
-                'is_read' => 1,
-                'is_edit' => 1,
-                'is_delete' => 1,
-            ]);
+            // Grant privilege roles for all existing privileges
+            $allPrivileges = DB::table('cms_privileges')->get();
+            foreach ($allPrivileges as $p) {
+                DB::table('cms_privileges_roles')->updateOrInsert(
+                    [
+                        'id_cms_moduls' => $id,
+                        'id_cms_privileges' => $p->id,
+                    ],
+                    [
+                        'is_visible' => 1,
+                        'is_create' => 1,
+                        'is_read' => 1,
+                        'is_edit' => 1,
+                        'is_delete' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
         } else {
             DB::table('cms_moduls')->where('id', $id)->update([
                 'name' => $name,

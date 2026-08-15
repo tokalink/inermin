@@ -60,34 +60,67 @@ class Inermin
         return (bool) Session::get('admin_is_superadmin');
     }
 
-    public static function isView()
+    public static function getModuleRole($action = 'is_read', $modulePath = null)
     {
-        if (self::isSuperadmin()) return true;
-        return (bool) Session::get('admin_is_view');
+        if (self::isSuperadmin()) {
+            return true;
+        }
+
+        $privId = self::myPrivilegeId();
+        if (!$privId) return false;
+
+        if (!$modulePath) {
+            $segments = Request::segments();
+            $adminPath = config('inermin.ADMIN_PATH', 'administrator');
+            if (count($segments) > 1 && $segments[0] == $adminPath) {
+                $modulePath = $segments[1];
+            }
+        }
+
+        if (!$modulePath) return true;
+
+        try {
+            $module = DB::table('cms_moduls')
+                ->where('path', $modulePath)
+                ->orWhere('table_name', $modulePath)
+                ->first();
+
+            if (!$module) return true;
+
+            $role = DB::table('cms_privileges_roles')
+                ->where('id_cms_privileges', $privId)
+                ->where('id_cms_moduls', $module->id)
+                ->first();
+
+            return $role ? (bool) $role->{$action} : false;
+        } catch (\Exception $e) {
+            return true;
+        }
     }
 
-    public static function isCreate()
+    public static function isView($modulePath = null)
     {
-        if (self::isSuperadmin()) return true;
-        return (bool) Session::get('admin_is_create');
+        return self::getModuleRole('is_visible', $modulePath);
     }
 
-    public static function isRead()
+    public static function isCreate($modulePath = null)
     {
-        if (self::isSuperadmin()) return true;
-        return (bool) Session::get('admin_is_read');
+        return self::getModuleRole('is_create', $modulePath);
     }
 
-    public static function isUpdate()
+    public static function isRead($modulePath = null)
     {
-        if (self::isSuperadmin()) return true;
-        return (bool) Session::get('admin_is_edit');
+        return self::getModuleRole('is_read', $modulePath);
     }
 
-    public static function isDelete()
+    public static function isUpdate($modulePath = null)
     {
-        if (self::isSuperadmin()) return true;
-        return (bool) Session::get('admin_is_delete');
+        return self::getModuleRole('is_edit', $modulePath);
+    }
+
+    public static function isDelete($modulePath = null)
+    {
+        return self::getModuleRole('is_delete', $modulePath);
     }
 
     public static function getSetting($name)
