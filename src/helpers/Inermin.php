@@ -287,13 +287,28 @@ class Inermin
         }
     }
 
-    public static function listTables()
+    public static function listTables($connection = null)
     {
         try {
-            $tables = DB::select('SHOW TABLES');
-            return array_map(function ($table) {
-                return array_values((array) $table)[0];
-            }, $tables);
+            $conn = DB::connection($connection);
+            $driver = $conn->getDriverName();
+
+            if ($driver === 'pgsql') {
+                $tables = $conn->select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name");
+                return array_map(function ($t) {
+                    return $t->table_name;
+                }, $tables);
+            } elseif ($driver === 'sqlsrv') {
+                $tables = $conn->select("SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' ORDER BY table_name");
+                return array_map(function ($t) {
+                    return $t->table_name;
+                }, $tables);
+            } else {
+                $tables = $conn->select('SHOW TABLES');
+                return array_map(function ($t) {
+                    return array_values((array) $t)[0];
+                }, $tables);
+            }
         } catch (\Exception $e) {
             return [];
         }

@@ -69,7 +69,11 @@ class InerminModulsController extends InerminController
         $data['step'] = 1;
         $data['id'] = $id;
         $data['row'] = $id ? DB::table('cms_moduls')->where('id', $id)->first() : null;
-        $data['tables'] = Inermin::listTables();
+        $mainTables = Inermin::listTables();
+        $tenantTables = Inermin::listTables('tenant');
+        $allTables = array_unique(array_merge($mainTables, $tenantTables));
+        sort($allTables);
+        $data['tables'] = array_values($allTables);
         $data['apps'] = DB::table('cms_apps')->where('is_active', 1)->orderBy('name', 'asc')->get();
 
         return Inertia::render('Inermin/Modules/Wizard', $data);
