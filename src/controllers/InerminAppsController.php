@@ -68,10 +68,32 @@ class InerminAppsController extends InerminController
             ['label' => 'Harga Bulanan / Monthly (Rp)', 'name' => 'price_monthly', 'type' => 'money'],
             ['label' => 'Harga Tahunan / Yearly (Rp)', 'name' => 'price_yearly', 'type' => 'money'],
             ['label' => 'Harga Sekali Beli / One-Time (Rp)', 'name' => 'price_one_time', 'type' => 'money'],
-            ['label' => 'Sediakan Trial Gratis', 'name' => 'has_trial', 'type' => 'radio', 'enum' => ['1|Aktifkan Free Trial', '0|Tanpa Free Trial'], 'required' => true],
-            ['label' => 'Durasi Masa Trial (Hari)', 'name' => 'trial_days', 'type' => 'number', 'placeholder' => 'Default 14 Hari'],
+            ['label' => 'Bisa Trial?', 'name' => 'has_trial', 'type' => 'radio', 'enum' => ["1|Ya (Ada Free Trial)", "0|Tidak Ada Trial"], 'required' => true],
+            ['label' => 'Durasi Trial (Hari)', 'name' => 'trial_days', 'type' => 'number', 'placeholder' => 'Jumlah hari trial, e.g. 14'],
             ['label' => 'Is Active', 'name' => 'is_active', 'type' => 'radio', 'enum' => ['1|Active', '0|Inactive'], 'required' => true],
             ['label' => 'Description', 'name' => 'description', 'type' => 'textarea', 'width' => 'col-span-12'],
         ];
+    }
+
+    public function getAppLanding($code)
+    {
+        $app = \Illuminate\Support\Facades\DB::table('cms_apps')->where('code', $code)->first();
+        if (!$app) {
+            return redirect(Inermin::adminPath())->with('error', 'Application Suite not found!');
+        }
+
+        // Find first active module belonging to this app_code
+        $firstModule = \Illuminate\Support\Facades\DB::table('cms_moduls')
+            ->where('app_code', $code)
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->orderBy('id', 'asc')
+            ->first();
+
+        if ($firstModule && !empty($firstModule->path)) {
+            return redirect(Inermin::adminPath($firstModule->path));
+        }
+
+        return redirect(Inermin::adminPath())->with('info', 'Welcome to ' . $app->name);
     }
 }

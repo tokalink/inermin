@@ -151,3 +151,23 @@ try {
     // Schema or table not ready fallback
 }
 
+// Dynamic App Suite Landing Routes (e.g. /administrator/mutasi)
+try {
+    if (\Illuminate\Support\Facades\Schema::hasTable('cms_apps')) {
+        $apps = \Illuminate\Support\Facades\DB::table('cms_apps')
+            ->whereNotNull('code')
+            ->where('code', '!=', '')
+            ->where('is_active', 1)
+            ->get();
+
+        foreach ($apps as $appItem) {
+            $path = $prefix . '/' . trim($appItem->code, '/');
+            Route::get($path, function () use ($appItem) {
+                return (new \Tokalink\Inermin\controllers\InerminAppsController)->getAppLanding($appItem->code);
+            })->middleware(['web', InerminShareInertiaData::class, InerminAuthMiddleware::class]);
+        }
+    }
+} catch (\Exception $e) {
+    // Schema or table not ready fallback
+}
+
