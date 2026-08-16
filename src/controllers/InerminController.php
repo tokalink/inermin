@@ -18,6 +18,7 @@ class InerminController extends Controller
 
     // Configuration Properties matching CRUDBooster
     public $model = null; // Optional Eloquent Model class e.g. \App\Models\CmsApp::class
+    public $connection = null; // Optional Database connection e.g. 'tenant' or 'pgsql'
     public $table = '';
     public $primary_key = 'id';
     public $title_field = '';
