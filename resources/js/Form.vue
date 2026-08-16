@@ -103,7 +103,7 @@ const clearFile = (fieldName) => {
   delete previews.value[fieldName]
 }
 
-// Option normalization for selects / radios / checkboxes
+// Option normalization for selects / radios / checkboxes (supports '1|Aktif' pipe syntax & associative arrays)
 const getOptions = (field) => {
   const enumData = field.dataenum || field.enum
   if (!enumData) return []
@@ -111,6 +111,10 @@ const getOptions = (field) => {
     return enumData.map(opt => {
       if (typeof opt === 'object' && opt !== null) {
         return { value: opt.value ?? opt.id, label: opt.label ?? opt.name ?? opt.value }
+      }
+      if (typeof opt === 'string' && opt.includes('|')) {
+        const [val, ...labelParts] = opt.split('|')
+        return { value: val.trim(), label: labelParts.join('|').trim() }
       }
       return { value: opt, label: opt }
     })
