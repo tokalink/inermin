@@ -219,6 +219,12 @@ const isImage = (val) => {
   return val.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) != null || val.startsWith('storage/') || val.startsWith('http')
 }
 
+const formatImageUrl = (val) => {
+  if (typeof val !== 'string' || !val) return ''
+  if (val.startsWith('http://') || val.startsWith('https://')) return val
+  return val.startsWith('/') ? val : '/' + val
+}
+
 const filterOperators = [
   { label: 'Contains (like)', value: 'like' },
   { label: 'Equals (=)', value: '=' },
@@ -629,7 +635,9 @@ const toggleDropdown = (id) => {
                 <!-- Data Columns -->
                 <td v-for="col in columns" :key="col.name" class="px-4 py-3.5">
                   <template v-if="isImage(item[col.name])">
-                    <img :src="item[col.name]" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs" alt="Thumbnail" />
+                    <a :href="formatImageUrl(item[col.name])" target="_blank">
+                      <img :src="formatImageUrl(item[col.name])" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs hover:scale-105 transition" alt="Thumbnail" />
+                    </a>
                   </template>
                   <template v-else-if="col.name === 'id' || col.name === primary_key">
                     <span class="font-mono text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200/40 dark:border-indigo-800/40">
