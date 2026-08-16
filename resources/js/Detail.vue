@@ -109,8 +109,12 @@ const getFieldValue = (field) => {
             
             <div class="w-2/3 text-xs text-slate-800 dark:text-slate-100 font-medium">
               <!-- Image preview -->
-              <div v-if="isImage(getFieldValue(field))" class="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                <img :src="String(getFieldValue(field)).startsWith('http') ? getFieldValue(field) : '/' + getFieldValue(field)" class="w-full h-full object-cover" alt="Detail Image" />
+              <div v-if="field.image || isImage(getFieldValue(field))" class="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                <img v-if="getFieldValue(field) && getFieldValue(field) !== '-'" :src="String(getFieldValue(field)).startsWith('http') ? getFieldValue(field) : (String(getFieldValue(field)).startsWith('/') ? getFieldValue(field) : '/' + getFieldValue(field))" class="w-full h-full object-cover" alt="Detail Image" />
+                <div v-else class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                  <i class="bi bi-image text-xl opacity-60"></i>
+                  <span class="text-[10px] font-mono mt-1">No Image</span>
+                </div>
               </div>
 
               <span v-else>{{ getFieldValue(field) }}</span>

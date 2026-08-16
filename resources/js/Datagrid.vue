@@ -683,10 +683,13 @@ const toggleDropdown = (id) => {
 
                 <!-- Data Columns -->
                 <td v-for="col in columns" :key="col.name" class="px-4 py-3.5">
-                  <template v-if="isImage(item[col.name], col)">
-                    <a :href="formatImageUrl(item[col.name])" target="_blank">
+                  <template v-if="col.image || isImage(item[col.name], col)">
+                    <a v-if="item[col.name]" :href="formatImageUrl(item[col.name])" target="_blank" class="inline-block">
                       <img :src="formatImageUrl(item[col.name])" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs hover:scale-105 transition" alt="Thumbnail" />
                     </a>
+                    <div v-else class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 dark:text-slate-500 shadow-2xs select-none" title="No Image Uploaded">
+                      <i class="bi bi-image text-sm opacity-60"></i>
+                    </div>
                   </template>
                   <template v-else-if="col.name === 'id' || col.name === primary_key">
                     <span class="font-mono text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200/40 dark:border-indigo-800/40">
