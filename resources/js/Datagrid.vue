@@ -225,9 +225,19 @@ const deleteRow = (id) => {
   }
 }
 
-const isImage = (val) => {
-  if (typeof val !== 'string') return false
-  return val.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) != null || val.startsWith('storage/') || val.startsWith('http')
+const isImage = (val, col = null) => {
+  if (typeof val !== 'string' || !val) return false
+  if (col && col.image) return true
+
+  const colName = col ? (col.name || '').toLowerCase() : ''
+  const isImageColName = ['logo', 'image', 'photo', 'avatar', 'picture', 'thumbnail', 'banner', 'foto'].some(k => colName.includes(k))
+  const isImageFileExt = val.match(/\.(jpeg|jpg|gif|png|webp|svg)(\?.*)?$/i) != null
+  const isStorageUpload = val.startsWith('storage/') || val.startsWith('/storage/')
+
+  if (isImageFileExt) return true
+  if (isImageColName && (isStorageUpload || val.startsWith('http'))) return true
+
+  return false
 }
 
 const formatImageUrl = (val) => {
@@ -673,7 +683,7 @@ const toggleDropdown = (id) => {
 
                 <!-- Data Columns -->
                 <td v-for="col in columns" :key="col.name" class="px-4 py-3.5">
-                  <template v-if="isImage(item[col.name])">
+                  <template v-if="isImage(item[col.name], col)">
                     <a :href="formatImageUrl(item[col.name])" target="_blank">
                       <img :src="formatImageUrl(item[col.name])" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs hover:scale-105 transition" alt="Thumbnail" />
                     </a>
