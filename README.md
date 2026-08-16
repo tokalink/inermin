@@ -14,6 +14,7 @@ Comprehensive documentation guides are available in the [`docs/`](./docs) direct
 4. 🎨 [**Zero-Touch Vendor Overriding & `inermin:make-view` CLI**](./docs/04-vendor-overriding-and-make-view.md) — Customizing views without editing `vendor/`.
 5. 🛠️ [**Module Generator & Custom View Modules**](./docs/05-module-generator-and-custom-views.md) — Standard CRUD modules vs Custom View Modules.
 6. 🛡️ [**Privileges, RBAC Matrix & Security Authorization**](./docs/06-privileges-rbac-and-security.md) — Permission checklist, master checkboxes, and superadmin route protection.
+7. 💎 [**Guide: Eloquent Models & Hybrid Data Architecture**](./docs/07-using-eloquent-models.md) — Using Eloquent Models vs Query Builder in Inermin Controllers.
 
 ---
 

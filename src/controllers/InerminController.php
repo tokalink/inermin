@@ -17,6 +17,7 @@ class InerminController extends Controller
     public $columns_table;
 
     // Configuration Properties matching CRUDBooster
+    public $model = null; // Optional Eloquent Model class e.g. \App\Models\CmsApp::class
     public $table = '';
     public $primary_key = 'id';
     public $title_field = '';
@@ -47,6 +48,16 @@ class InerminController extends Controller
     {
         if (method_exists($this, 'cbInit')) {
             $this->cbInit();
+        }
+
+        if ($this->model && class_exists($this->model)) {
+            $instance = new $this->model;
+            if (empty($this->table)) {
+                $this->table = $instance->getTable();
+            }
+            if (empty($this->primary_key) || $this->primary_key === 'id') {
+                $this->primary_key = $instance->getKeyName();
+            }
         }
     }
 
