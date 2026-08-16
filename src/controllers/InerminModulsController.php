@@ -55,12 +55,22 @@ class InerminModulsController extends InerminController
 
     public function getStep1($id = 0)
     {
+        // Auto-upgrade cms_moduls schema if missing app_code column
+        if (\Illuminate\Support\Facades\Schema::hasTable('cms_moduls')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('cms_moduls', 'app_code')) {
+                \Illuminate\Support\Facades\Schema::table('cms_moduls', function ($table) {
+                    $table->string('app_code')->nullable()->after('controller');
+                });
+            }
+        }
+
         $data = [];
         $data['page_title'] = 'Module Generator - Step 1 (Module Info)';
         $data['step'] = 1;
         $data['id'] = $id;
         $data['row'] = $id ? DB::table('cms_moduls')->where('id', $id)->first() : null;
         $data['tables'] = Inermin::listTables();
+        $data['apps'] = DB::table('cms_apps')->where('is_active', 1)->orderBy('name', 'asc')->get();
 
         return Inertia::render('Inermin/Modules/Wizard', $data);
     }
@@ -71,29 +81,43 @@ class InerminModulsController extends InerminController
         $module_type = Request::input('module_type', 'crud');
         $table_name = Request::input('table_name') ?: '';
         $icon = Request::input('icon') ?: 'bi bi-boxes';
+        $app_code = Request::input('app_code');
         
         $rawPath = Request::input('path');
         if (!$rawPath) {
             $rawPath = $name ?: $table_name;
         }
         $path = Str::slug(str_replace('_', ' ', $rawPath), '_');
-        $controller = Request::input('controller') ?: 'Admin' . Str::studly($path) . 'Controller';
+        $baseController = Request::input('controller') ?: 'Admin' . Str::studly($path) . 'Controller';
         $id = Request::input('id');
+
+        // Sub-folder handling based on App Code
+        $subFolder = $app_code ? Str::studly($app_code) : '';
+        $namespace = $subFolder ? "App\\Http\\Controllers\\{$subFolder}" : "App\\Http\\Controllers";
+        $storedController = $subFolder ? "{$subFolder}\\{$baseController}" : $baseController;
 
         if (!$id) {
             if (DB::table('cms_moduls')->where('path', $path)->whereNull('deleted_at')->exists()) {
                 return redirect()->back()->with('error', "Slug path '{$path}' already exists! Please choose another path.");
             }
 
-            // Create Controller file if it does not exist
-            $controllerPath = app_path('Http/Controllers/' . $controller . '.php');
+            // Target Controller directory & file path
+            $controllerDir = $subFolder ? app_path('Http/Controllers/' . $subFolder) : app_path('Http/Controllers');
+            if (!File::isDirectory($controllerDir)) {
+                File::makeDirectory($controllerDir, 0755, true);
+            }
+            $controllerPath = $controllerDir . '/' . $baseController . '.php';
+
             if (!file_exists($controllerPath)) {
                 if ($module_type === 'custom') {
                     $studlyPath = Str::studly($path);
-                    $stub = $this->generateCustomControllerStub($controller, $studlyPath, $name);
+                    $renderViewPath = $subFolder ? "Inermin/{$subFolder}/{$studlyPath}/Index" : "Inermin/{$studlyPath}/Index";
+                    $stub = $this->generateCustomControllerStub($baseController, $renderViewPath, $name, $namespace);
                     
                     // Auto generate Custom Vue View Scaffold
-                    $viewPath = resource_path('js/Pages/Inermin/' . $studlyPath . '/Index.vue');
+                    $viewPath = $subFolder 
+                        ? resource_path("js/Pages/Inermin/{$subFolder}/{$studlyPath}/Index.vue")
+                        : resource_path("js/Pages/Inermin/{$studlyPath}/Index.vue");
                     $viewDir = dirname($viewPath);
                     if (!File::isDirectory($viewDir)) {
                         File::makeDirectory($viewDir, 0755, true);
@@ -102,7 +126,7 @@ class InerminModulsController extends InerminController
                         File::put($viewPath, $this->generateCustomVueViewStub($studlyPath, $name));
                     }
                 } else {
-                    $stub = $this->generateControllerStub($controller, $table_name, $name);
+                    $stub = $this->generateControllerStub($baseController, $table_name, $name, $namespace);
                 }
                 File::put($controllerPath, $stub);
             }
@@ -112,7 +136,8 @@ class InerminModulsController extends InerminController
                 'table_name' => $table_name,
                 'icon' => $icon,
                 'path' => $path,
-                'controller' => $controller,
+                'controller' => $storedController,
+                'app_code' => $app_code,
                 'is_protected' => 0,
                 'is_active' => 1,
                 'created_at' => now(),
@@ -124,8 +149,9 @@ class InerminModulsController extends InerminController
                 $menuId = DB::table('cms_menus')->insertGetId([
                     'name' => $name,
                     'icon' => $icon,
-                    'path' => $controller . 'GetIndex',
+                    'path' => str_replace('\\', '', $storedController) . 'GetIndex',
                     'type' => 'Route',
+                    'app_code' => $app_code,
                     'is_active' => 1,
                     'sorting' => $menuSort,
                     'parent_id' => 0,
@@ -296,11 +322,11 @@ class InerminModulsController extends InerminController
         return redirect(Inermin::adminPath('modules'))->with('success', 'Module created successfully!');
     }
 
-    private function generateControllerStub($className, $tableName, $moduleName)
+    private function generateControllerStub($className, $tableName, $moduleName, $namespace = 'App\\Http\\Controllers')
     {
         return '<?php
 
-namespace App\Http\Controllers;
+namespace ' . $namespace . ';
 
 use Tokalink\Inermin\controllers\InerminController;
 
@@ -320,11 +346,11 @@ class ' . $className . ' extends InerminController
 ';
     }
 
-    private function generateCustomControllerStub($className, $studlyPath, $moduleName)
+    private function generateCustomControllerStub($className, $renderViewPath, $moduleName, $namespace = 'App\\Http\\Controllers')
     {
         return '<?php
 
-namespace App\Http\Controllers;
+namespace ' . $namespace . ';
 
 use Tokalink\Inermin\controllers\InerminController;
 use Illuminate\Http\Request;
@@ -341,7 +367,7 @@ class ' . $className . ' extends InerminController
 
     public function getIndex(Request $request = null)
     {
-        return Inertia::render(\'Inermin/' . $studlyPath . '/Index\', [
+        return Inertia::render(\'' . $renderViewPath . '\', [
             \'page_title\' => \'' . addslashes($moduleName) . '\',
         ]);
     }
