@@ -17,10 +17,21 @@ const props = defineProps({
   button_selected: Array,
   index_statistic: Array,
   alerts: Array,
+  parent_info: Object,
 })
 
 const page = usePage()
+const adminPath = computed(() => '/' + (page.props.admin_path || 'administrator'))
 const currentPath = computed(() => page.url.split('?')[0])
+
+const getSubModuleUrl = (sub, item) => {
+  const pCol = sub.parent_columns || props.primary_key
+  const pVal = item[pCol] || item[props.primary_key] || ''
+  const fKey = sub.foreign_key || 'parent_id'
+  const path = sub.path || ''
+  
+  return `${adminPath.value}/${path}?parent_table=${props.table_name}&parent_columns=${pCol}&parent_columns_alias=${encodeURIComponent(pCol)}&parent_id=${item[props.primary_key]}&parent_value=${encodeURIComponent(pVal)}&foreign_key=${fKey}`
+}
 
 const searchQuery = ref(props.filters?.q || '')
 const currentOrderby = ref(props.filters?.orderby || '')
@@ -516,6 +527,34 @@ const toggleDropdown = (id) => {
         </button>
       </div>
 
+      <!-- Sub-Module Parent Info Context Banner -->
+      <div v-if="parent_info" class="p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-lg font-bold shadow-sm shrink-0">
+            <i class="bi bi-diagram-3-fill"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">Sub-Module Data View</span>
+              <span class="text-xs font-bold bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md font-mono border border-indigo-500/30">
+                {{ parent_info.parent_columns_alias || 'Parent' }}: {{ parent_info.parent_value }}
+              </span>
+            </div>
+            <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5 font-medium">
+              Filtered child records where <code class="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{{ parent_info.foreign_key }}</code> = #{{ parent_info.parent_id }}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          :href="adminPath + '/' + (parent_info.parent_table || '')"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 self-start sm:self-auto"
+        >
+          <i class="bi bi-arrow-left"></i>
+          <span>Back to Parent List</span>
+        </Link>
+      </div>
+
       <!-- Search & Per Page Toolbar Card -->
       <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         
@@ -715,6 +754,27 @@ const toggleDropdown = (id) => {
                   <!-- Button / Icon Action Style -->
                   <div v-else class="flex items-center justify-end gap-1.5">
                     
+                    <!-- Sub-Module Master-Detail Buttons ($this->sub_module[]) -->
+                    <template v-for="(sub, sIdx) in sub_module" :key="sIdx">
+                      <Link
+                        :href="getSubModuleUrl(sub, item)"
+                        :title="sub.title"
+                        :class="[
+                          'inline-flex items-center gap-1.5 px-3 py-1.5 font-bold text-xs rounded-xl shadow-xs transition border',
+                          sub.button_color === 'emerald'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                            : sub.button_color === 'amber'
+                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                            : sub.button_color === 'rose'
+                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-100'
+                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100'
+                        ]"
+                      >
+                        <i :class="[sub.button_icon || 'bi bi-diagram-3-fill', 'text-sm']"></i>
+                        <span>{{ sub.title }}</span>
+                      </Link>
+                    </template>
+
                     <!-- Custom Add Action Buttons ($this->addaction[]) -->
                     <template v-for="(act, idx) in addaction" :key="idx">
                       <a

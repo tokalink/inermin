@@ -228,6 +228,13 @@ class InerminController extends Controller
             $query->orderBy($this->table . '.' . $this->primary_key, 'desc');
         }
 
+        // Filter by Parent ID if sub-module parameter is present
+        if ($request->has('parent_id') && $request->has('foreign_key')) {
+            $foreignKey = $request->input('foreign_key');
+            $parentId = $request->input('parent_id');
+            $query->where($this->table . '.' . $foreignKey, $parentId);
+        }
+
         $limit = $request->input('limit', $this->limit);
         $result = $query->paginate($limit)->withQueryString();
 
@@ -292,6 +299,14 @@ class InerminController extends Controller
             'button_selected' => $this->button_selected,
             'index_statistic' => $this->index_statistic,
             'alerts' => $this->alert,
+            'parent_info' => $request->has('parent_id') ? [
+                'parent_id' => $request->input('parent_id'),
+                'foreign_key' => $request->input('foreign_key'),
+                'parent_columns' => $request->input('parent_columns'),
+                'parent_columns_alias' => $request->input('parent_columns_alias'),
+                'parent_table' => $request->input('parent_table'),
+                'parent_value' => $request->input('parent_value'),
+            ] : null,
         ]);
     }
 
@@ -303,13 +318,20 @@ class InerminController extends Controller
 
         $processedForm = $this->processFormSchema();
 
+        $defaultRow = null;
+        if (request()->has('parent_id') && request()->has('foreign_key')) {
+            $defaultRow = [
+                request('foreign_key') => request('parent_id')
+            ];
+        }
+
         return Inertia::render('Inermin/Form', [
             'page_title' => 'Add ' . ucwords(str_replace('_', ' ', $this->table)),
             'table_name' => $this->table,
             'primary_key' => $this->primary_key,
             'form_schema' => $processedForm,
             'forms' => $processedForm,
-            'row' => null,
+            'row' => $defaultRow,
             'action_url' => Inermin::mainpath('add'),
         ]);
     }
