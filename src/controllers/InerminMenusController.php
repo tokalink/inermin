@@ -164,7 +164,7 @@ class InerminMenusController extends InerminController
                 'parent_id' => $m['parent_id'] ?? 0,
             ]);
         }
-        return response()->json(['status' => true]);
+        return redirect()->back()->with('success', 'Menu order updated successfully!');
     }
 
     public function getDelete($id = null)
