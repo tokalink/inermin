@@ -36,6 +36,8 @@ class InerminDatabaseSeeder extends Seeder
 
         // 3. System Modules
         $modules = [
+            ['name' => 'Applications Suite', 'icon' => 'bi bi-grid-3x3-gap-fill', 'path' => 'apps', 'table_name' => 'cms_apps', 'controller' => 'InerminAppsController', 'is_protected' => 1],
+            ['name' => 'Tenants Registry', 'icon' => 'bi bi-buildings-fill', 'path' => 'tenants', 'table_name' => 'cms_tenants', 'controller' => 'InerminTenantsController', 'is_protected' => 1],
             ['name' => 'Users Management', 'icon' => 'bi bi-people-fill', 'path' => 'users', 'table_name' => 'cms_users', 'controller' => 'InerminUsersController', 'is_protected' => 1],
             ['name' => 'Privileges Roles', 'icon' => 'bi bi-key-fill', 'path' => 'privileges', 'table_name' => 'cms_privileges', 'controller' => 'InerminPrivilegesController', 'is_protected' => 1],
             ['name' => 'Menu Management', 'icon' => 'bi bi-list-nested', 'path' => 'menus', 'table_name' => 'cms_menus', 'controller' => 'InerminMenusController', 'is_protected' => 1],
@@ -66,6 +68,20 @@ class InerminDatabaseSeeder extends Seeder
         foreach ($settings as $s) {
             if (DB::table('cms_settings')->where('name', $s['name'])->count() == 0) {
                 DB::table('cms_settings')->insert(array_merge($s, ['created_at' => now()]));
+            }
+        }
+
+        // 5. Default SaaS Navigation Menus
+        if (DB::table('cms_menus')->count() == 0) {
+            $defaultMenus = [
+                ['name' => 'SAAS PLATFORM', 'type' => 'Header', 'icon' => 'bi bi-rocket-takeoff-fill', 'sorting' => 1],
+                ['name' => 'Tenants Registry', 'type' => 'Route', 'path' => 'InerminTenantsControllerGetIndex', 'icon' => 'bi bi-buildings-fill', 'sorting' => 2],
+                ['name' => 'Applications Suite', 'type' => 'Route', 'path' => 'InerminAppsControllerGetIndex', 'icon' => 'bi bi-grid-3x3-gap-fill', 'sorting' => 3],
+            ];
+
+            foreach ($defaultMenus as $m) {
+                $menuId = DB::table('cms_menus')->insertGetId(array_merge($m, ['is_active' => 1, 'parent_id' => 0, 'created_at' => now()]));
+                DB::table('cms_menus_privileges')->insert(['id_cms_menus' => $menuId, 'id_cms_privileges' => 1]);
             }
         }
     }
