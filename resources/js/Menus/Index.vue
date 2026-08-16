@@ -267,7 +267,8 @@ const deleteMenu = (id, name) => {
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Type *</label>
                 <select v-model="activeMenuForm.type" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
-                  <option value="Module">Module</option>
+                  <option value="Module">Module (Database Module)</option>
+                  <option value="Header">Header (Section Divider Label)</option>
                   <option value="Route">Route / Controller</option>
                   <option value="URL">External URL</option>
                 </select>

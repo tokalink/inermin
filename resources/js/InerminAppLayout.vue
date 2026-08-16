@@ -308,11 +308,20 @@ onMounted(() => {
               </Link>
             </li>
 
-            <!-- Custom Dynamic User Generated Menus (Supports Parent & Child Submenus) -->
+            <!-- Custom Dynamic User Generated Menus (Supports Section Headers, Parent & Child Submenus) -->
             <template v-for="item in filteredCustomMenu" :key="item.id">
               
+              <!-- HEADER SECTION DIVIDER ITEM -->
+              <li v-if="item.type === 'Header'" class="pt-4 pb-1">
+                <div v-if="!isCollapsed || isMobileOpen" class="px-3 text-[10px] tracking-[0.22em] text-stone-400 font-extrabold uppercase flex items-center gap-2">
+                  <i :class="[item.icon || 'bi bi-grid-fill', 'text-[rgb(var(--accent-rgb))] text-xs']"></i>
+                  <span>{{ item.name }}</span>
+                </div>
+                <div v-else class="w-full h-px bg-stone-200 dark:bg-white/10 my-1"></div>
+              </li>
+
               <!-- IF PARENT WITH CHILDREN SUBMENU -->
-              <li v-if="item.children && item.children.length" class="space-y-1">
+              <li v-else-if="item.children && item.children.length" class="space-y-1">
                 <div
                   @click="toggleSubmenu(item.id)"
                   :class="[
