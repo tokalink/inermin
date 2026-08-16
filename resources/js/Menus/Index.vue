@@ -11,6 +11,7 @@ const props = defineProps({
   privileges: Array,
   parent_menus: Array,
   apps: Array,
+  group_names: Array,
 })
 
 const selectedAppFilter = ref('all')
@@ -24,6 +25,7 @@ const activeMenuForm = ref({
   module_id: props.modules?.[0]?.id || 0,
   parent_id: 0,
   app_code: '',
+  group_name: '',
   is_active: 1,
   privileges: props.privileges?.map(p => p.id) || [],
 })
@@ -41,6 +43,16 @@ const filteredMenus = computed(() => {
   })
 })
 
+const addSectionHeaderGroup = () => {
+  resetForm()
+  activeMenuForm.value.type = 'Header'
+  activeMenuForm.value.name = 'NEW SECTION GROUP'
+  activeMenuForm.value.icon = 'bi bi-folder-fill'
+  if (selectedAppFilter.value !== 'all') {
+    activeMenuForm.value.app_code = selectedAppFilter.value
+  }
+}
+
 const editMenu = (item) => {
   isEditing.value = true
   activeMenuForm.value = {
@@ -52,6 +64,7 @@ const editMenu = (item) => {
     module_id: props.modules?.find(m => m.controller + 'GetIndex' === item.path || m.path === item.path)?.id || 0,
     parent_id: item.parent_id || 0,
     app_code: item.app_code || '',
+    group_name: item.group_name || '',
     is_active: item.is_active ? 1 : 0,
     privileges: item.privileges || [],
   }
@@ -68,6 +81,7 @@ const resetForm = () => {
     module_id: props.modules?.[0]?.id || 0,
     parent_id: 0,
     app_code: '',
+    group_name: '',
     is_active: 1,
     privileges: props.privileges?.map(p => p.id) || [],
   }
@@ -98,8 +112,16 @@ const deleteMenu = (id, name) => {
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage, group by application suite, and drag/order menu items</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage, group into section headers, and drag/order navigation menus</p>
         </div>
+
+        <button
+          @click="addSectionHeaderGroup"
+          class="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs shadow-md transition flex items-center justify-center gap-2 self-start sm:self-auto"
+        >
+          <i class="bi bi-folder-plus text-base"></i>
+          <span>+ Add Section Group Header</span>
+        </button>
       </div>
 
       <!-- Application Suite Filter Tabs -->
@@ -150,8 +172,42 @@ const deleteMenu = (id, name) => {
             <div class="space-y-3">
               <div v-for="(item, idx) in filteredMenus" :key="item.id" class="space-y-2">
                 
-                <!-- Parent Item Card -->
-                <div class="p-3.5 bg-stone-50 dark:bg-white/[0.02] border border-stone-200 dark:border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/30 transition">
+                <!-- IF SECTION HEADER DIVIDER GROUP ITEM -->
+                <div v-if="item.type === 'Header'" class="p-3.5 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl flex items-center justify-between mt-4">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-lg bg-amber-500 text-stone-950 font-mono text-[11px] font-extrabold flex items-center justify-center shadow-sm">
+                      #{{ idx + 1 }}
+                    </span>
+                    <i :class="[item.icon || 'bi bi-folder-fill', 'text-amber-500 text-lg']"></i>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <h4 class="font-extrabold text-xs tracking-wider text-amber-500 uppercase">{{ item.name }}</h4>
+                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                          SECTION GROUP
+                        </span>
+                        <span v-if="item.app_code" class="text-[9px] font-mono font-bold bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded uppercase">
+                          {{ item.app_code }}
+                        </span>
+                      </div>
+                      <p class="text-[10px] text-stone-400 font-mono mt-0.5">Sidebar Group Divider Header</p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-1">
+                    <button @click="moveOrder(item.id, 'up')" :disabled="idx === 0" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                      <i class="bi bi-arrow-up text-sm"></i>
+                    </button>
+                    <button @click="moveOrder(item.id, 'down')" :disabled="idx === filteredMenus.length - 1" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                      <i class="bi bi-arrow-down text-sm"></i>
+                    </button>
+                    <div class="w-px h-4 bg-stone-200 dark:bg-white/10 mx-1"></div>
+                    <button @click="editMenu(item)" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500"><i class="bi bi-pencil text-sm"></i></button>
+                    <button @click="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500"><i class="bi bi-trash text-sm"></i></button>
+                  </div>
+                </div>
+
+                <!-- STANDARD MENU ITEM CARD -->
+                <div v-else class="p-3.5 bg-stone-50 dark:bg-white/[0.02] border border-stone-200 dark:border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/30 transition">
                   <div class="flex items-center gap-3">
                     <!-- Order Index Badge -->
                     <span class="w-6 h-6 rounded-lg bg-stone-200 dark:bg-white/10 text-stone-700 dark:text-stone-300 font-mono text-[11px] font-bold flex items-center justify-center">
@@ -162,6 +218,9 @@ const deleteMenu = (id, name) => {
                     <div>
                       <div class="flex items-center gap-2">
                         <h4 class="font-bold text-xs text-stone-900 dark:text-white">{{ item.name }}</h4>
+                        <span v-if="item.group_name" class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          {{ item.group_name }}
+                        </span>
                         <span v-if="item.app_code" class="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.2 rounded border border-amber-500/20 uppercase">
                           {{ item.app_code }}
                         </span>
@@ -252,8 +311,18 @@ const deleteMenu = (id, name) => {
 
             <form @submit.prevent="saveMenu" class="space-y-4">
               <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Menu Name *</label>
-                <input v-model="activeMenuForm.name" type="text" required placeholder="e.g. Absen Data" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white" />
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Menu Title / Section Name *</label>
+                <input v-model="activeMenuForm.name" type="text" required placeholder="e.g. MUTASI FINANSIAL or Absen Data" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Type / Menu Kind *</label>
+                <select v-model="activeMenuForm.type" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
+                  <option value="Module">Module (Database Module)</option>
+                  <option value="Header">Header (Section Divider Label)</option>
+                  <option value="Route">Route / Controller</option>
+                  <option value="URL">External URL</option>
+                </select>
               </div>
 
               <div>
@@ -265,13 +334,18 @@ const deleteMenu = (id, name) => {
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Type *</label>
-                <select v-model="activeMenuForm.type" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
-                  <option value="Module">Module (Database Module)</option>
-                  <option value="Header">Header (Section Divider Label)</option>
-                  <option value="Route">Route / Controller</option>
-                  <option value="URL">External URL</option>
-                </select>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Section Group Tag / Header Name</label>
+                <input
+                  v-model="activeMenuForm.group_name"
+                  type="text"
+                  list="group_suggestions"
+                  placeholder="e.g. MASTER REKENING or TRANSAKSI"
+                  class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white"
+                />
+                <datalist id="group_suggestions">
+                  <option v-for="g in group_names" :key="g" :value="g"></option>
+                </datalist>
+                <span class="text-[10px] text-stone-400 mt-1 block">Optional section tag for grouping sidebar links</span>
               </div>
 
               <div v-if="activeMenuForm.type === 'Module'">
@@ -281,13 +355,13 @@ const deleteMenu = (id, name) => {
                 </select>
               </div>
 
-              <div v-else>
+              <div v-else-if="activeMenuForm.type !== 'Header'">
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Path / URL *</label>
                 <input v-model="activeMenuForm.path" type="text" placeholder="e.g. AdminAbsenControllerGetIndex or /custom-url" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white" />
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Parent Menu</label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Parent Menu (Accordion Group)</label>
                 <select v-model="activeMenuForm.parent_id" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
                   <option :value="0">-- Top Level (No Parent) --</option>
                   <option v-for="p in parent_menus" :key="p.id" :value="p.id">{{ p.name }}</option>

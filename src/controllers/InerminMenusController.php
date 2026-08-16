@@ -23,6 +23,15 @@ class InerminMenusController extends InerminController
             return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
         }
 
+        // Auto-upgrade cms_menus schema if missing group_name column
+        if (\Illuminate\Support\Facades\Schema::hasTable('cms_menus')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('cms_menus', 'group_name')) {
+                \Illuminate\Support\Facades\Schema::table('cms_menus', function ($table) {
+                    $table->string('group_name')->nullable()->after('parent_id');
+                });
+            }
+        }
+
         $data = [];
         $data['page_title'] = 'Menu Management';
         
@@ -52,6 +61,7 @@ class InerminMenusController extends InerminController
         $data['privileges'] = DB::table('cms_privileges')->orderBy('name', 'asc')->get();
         $data['parent_menus'] = DB::table('cms_menus')->where('parent_id', 0)->orderBy('name', 'asc')->get();
         $data['apps'] = DB::table('cms_apps')->where('is_active', 1)->orderBy('name', 'asc')->get();
+        $data['group_names'] = DB::table('cms_menus')->whereNotNull('group_name')->where('group_name', '!=', '')->pluck('group_name')->unique()->values()->toArray();
 
         return Inertia::render('Inermin/Menus/Index', $data);
     }
@@ -68,6 +78,8 @@ class InerminMenusController extends InerminController
         $app_code = Request::input('app_code');
         $is_active = Request::input('is_active', 1);
         $privileges = Request::input('privileges', []);
+
+        $group_name = Request::input('group_name');
 
         if ($type === 'Module' && $module_id) {
             $mod = DB::table('cms_moduls')->where('id', $module_id)->first();
@@ -86,6 +98,7 @@ class InerminMenusController extends InerminController
             'path' => $path,
             'parent_id' => $parent_id,
             'app_code' => $app_code,
+            'group_name' => $group_name,
             'is_active' => $is_active ? 1 : 0,
             'updated_at' => now(),
         ];
