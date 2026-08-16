@@ -245,11 +245,10 @@ class Inermin
         return redirect($to)->with($type, $message);
     }
 
-    public static function routeController($prefix, $controller, $namespace = 'App\Http\Controllers')
+    public static function routeController($prefix, $controller, $namespace = 'App\Http\Controllers', $appCode = null)
     {
         $adminPath = config('inermin.ADMIN_PATH', 'administrator');
         $prefix = ltrim($prefix, '/');
-        $fullPrefix = $adminPath . '/' . $prefix;
         $controllerClass = str_contains($controller, '\\') ? $controller : $namespace . '\\' . $controller;
 
         $shortClass = str_replace(['App\\Http\\Controllers\\', 'Tokalink\\Inermin\\controllers\\'], '', $controllerClass);
@@ -263,19 +262,28 @@ class Inermin
             return;
         }
 
-        Route::group(['prefix' => $fullPrefix, 'middleware' => ['web', \Tokalink\Inermin\middleware\InerminShareInertiaData::class, \Tokalink\Inermin\middleware\InerminAuthMiddleware::class]], function () use ($controllerClass) {
-            Route::get('/', [$controllerClass, 'getIndex']);
-            Route::get('/add', [$controllerClass, 'getAdd']);
-            Route::post('/add', [$controllerClass, 'postAddSave']);
-            Route::post('/send', [$controllerClass, 'postSendMessage']);
-            Route::get('/edit/{id?}', [$controllerClass, 'getEdit']);
-            Route::post('/edit/{id?}', [$controllerClass, 'postEditSave']);
-            Route::get('/detail/{id?}', [$controllerClass, 'getDetail']);
-            Route::get('/delete/{id?}', [$controllerClass, 'getDelete']);
-            Route::post('/action-selected', [$controllerClass, 'postActionSelected']);
-            Route::match(['get', 'post'], '/export-data', [$controllerClass, 'postExportData']);
-            Route::match(['get', 'post'], '/import-data', [$controllerClass, 'postImportData']);
-        });
+        $prefixes = [ $adminPath . '/' . $prefix ];
+
+        // Support standalone app prefix like /mutasi/banks
+        if ($appCode && $appCode !== 'core') {
+            $prefixes[] = trim($appCode, '/') . '/' . $prefix;
+        }
+
+        foreach ($prefixes as $fullPrefix) {
+            Route::group(['prefix' => $fullPrefix, 'middleware' => ['web', \Tokalink\Inermin\middleware\InerminShareInertiaData::class, \Tokalink\Inermin\middleware\InerminAuthMiddleware::class]], function () use ($controllerClass) {
+                Route::get('/', [$controllerClass, 'getIndex']);
+                Route::get('/add', [$controllerClass, 'getAdd']);
+                Route::post('/add', [$controllerClass, 'postAddSave']);
+                Route::post('/send', [$controllerClass, 'postSendMessage']);
+                Route::get('/edit/{id?}', [$controllerClass, 'getEdit']);
+                Route::post('/edit/{id?}', [$controllerClass, 'postEditSave']);
+                Route::get('/detail/{id?}', [$controllerClass, 'getDetail']);
+                Route::get('/delete/{id?}', [$controllerClass, 'getDelete']);
+                Route::post('/action-selected', [$controllerClass, 'postActionSelected']);
+                Route::match(['get', 'post'], '/export-data', [$controllerClass, 'postExportData']);
+                Route::match(['get', 'post'], '/import-data', [$controllerClass, 'postImportData']);
+            });
+        }
     }
 
     public static function getTableColumns($table)

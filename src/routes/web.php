@@ -143,7 +143,8 @@ try {
 
         foreach ($modules as $mod) {
             if (!empty($mod->path) && !empty($mod->controller)) {
-                \Tokalink\Inermin\helpers\Inermin::routeController($mod->path, $mod->controller);
+                $appCode = $mod->app_code ?? null;
+                \Tokalink\Inermin\helpers\Inermin::routeController($mod->path, $mod->controller, 'App\Http\Controllers', $appCode);
             }
         }
     }
@@ -151,7 +152,7 @@ try {
     // Schema or table not ready fallback
 }
 
-// Dynamic App Suite Landing Routes (e.g. /administrator/mutasi)
+// Dynamic App Suite Landing Routes (Standalone /mutasi and Central /administrator/mutasi)
 try {
     if (\Illuminate\Support\Facades\Schema::hasTable('cms_apps')) {
         $apps = \Illuminate\Support\Facades\DB::table('cms_apps')
@@ -161,8 +162,15 @@ try {
             ->get();
 
         foreach ($apps as $appItem) {
-            $path = $prefix . '/' . trim($appItem->code, '/');
-            Route::get($path, function () use ($appItem) {
+            $appCode = trim($appItem->code, '/');
+            
+            // Standalone Root Route (e.g. /mutasi)
+            Route::get('/' . $appCode, function () use ($appItem) {
+                return (new \Tokalink\Inermin\controllers\InerminAppsController)->getAppLanding($appItem->code);
+            })->middleware(['web', InerminShareInertiaData::class, InerminAuthMiddleware::class]);
+
+            // Central Admin Route (e.g. /administrator/mutasi)
+            Route::get($prefix . '/' . $appCode, function () use ($appItem) {
                 return (new \Tokalink\Inermin\controllers\InerminAppsController)->getAppLanding($appItem->code);
             })->middleware(['web', InerminShareInertiaData::class, InerminAuthMiddleware::class]);
         }

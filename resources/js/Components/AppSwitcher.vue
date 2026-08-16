@@ -35,7 +35,7 @@ const selectApp = (appCode) => {
   if (appCode === 'core') {
     router.get(adminPath)
   } else {
-    router.get(adminPath + '?app=' + appCode)
+    router.get('/' + appCode)
   }
 }
 </script>
