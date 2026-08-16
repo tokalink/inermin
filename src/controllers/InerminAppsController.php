@@ -68,7 +68,9 @@ class InerminAppsController extends InerminController
             ['label' => 'Harga Bulanan / Monthly (Rp)', 'name' => 'price_monthly', 'type' => 'money'],
             ['label' => 'Harga Tahunan / Yearly (Rp)', 'name' => 'price_yearly', 'type' => 'money'],
             ['label' => 'Harga Sekali Beli / One-Time (Rp)', 'name' => 'price_one_time', 'type' => 'money'],
-            ['label' => 'Is Active', 'name' => 'is_active', 'type' => 'radio', 'dataenum' => ['1' => 'Active', '0' => 'Inactive'], 'required' => true],
+            ['label' => 'Sediakan Trial Gratis', 'name' => 'has_trial', 'type' => 'radio', 'enum' => ['1|Aktifkan Free Trial', '0|Tanpa Free Trial'], 'required' => true],
+            ['label' => 'Durasi Masa Trial (Hari)', 'name' => 'trial_days', 'type' => 'number', 'placeholder' => 'Default 14 Hari'],
+            ['label' => 'Is Active', 'name' => 'is_active', 'type' => 'radio', 'enum' => ['1|Active', '0|Inactive'], 'required' => true],
             ['label' => 'Description', 'name' => 'description', 'type' => 'textarea', 'width' => 'col-span-12'],
         ];
     }
