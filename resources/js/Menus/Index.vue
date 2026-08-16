@@ -43,6 +43,40 @@ const filteredMenus = computed(() => {
   })
 })
 
+// Native Drag & Drop Handlers
+const draggedIndex = ref(null)
+
+const onDragStart = (event, index) => {
+  draggedIndex.value = index
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', index)
+}
+
+const onDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+}
+
+const onDrop = (event, dropIndex) => {
+  event.preventDefault()
+  if (draggedIndex.value === null || draggedIndex.value === dropIndex) return
+
+  const items = [...props.menus]
+  const [draggedItem] = items.splice(draggedIndex.value, 1)
+  items.splice(dropIndex, 0, draggedItem)
+
+  draggedIndex.value = null
+
+  // Save new sorted list to backend
+  const payload = items.map((m, idx) => ({
+    id: m.id,
+    parent_id: m.parent_id || 0,
+    sorting: idx + 1
+  }))
+
+  router.post('/administrator/menus/save-sorting', { menus: payload }, { preserveScroll: true })
+}
+
 const addSectionHeaderGroup = () => {
   resetForm()
   activeMenuForm.value.type = 'Header'
@@ -112,7 +146,7 @@ const deleteMenu = (id, name) => {
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage, group into section headers, and drag/order navigation menus</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Drag & drop menu cards or use move arrows to re-arrange navigation structure</p>
         </div>
 
         <button
@@ -158,23 +192,36 @@ const deleteMenu = (id, name) => {
         </button>
       </div>
 
-      <!-- Menu Builder Grid Layout (Left: Tree Hierarchy & Order, Right: Create/Edit Form) -->
+      <!-- Menu Builder Grid Layout (Left: Tree Hierarchy & Drag-Drop, Right: Create/Edit Form) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Left Column: Menu Tree Hierarchy & Ordering -->
+        <!-- Left Column: Menu Tree Hierarchy & Drag-Drop Ordering -->
         <div class="lg:col-span-2 space-y-4">
           <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm">
             <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
-              <span>Navigation Menu Structure</span>
-              <span class="text-xs text-slate-400 font-normal">Order & Re-arrange Navigation</span>
+              <span class="flex items-center gap-2">
+                <span>Navigation Menu Structure</span>
+                <span class="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-md font-extrabold">✨ Drag & Drop Enabled</span>
+              </span>
+              <span class="text-xs text-slate-400 font-normal">Grab grip handles to drag</span>
             </h3>
 
             <div class="space-y-3">
-              <div v-for="(item, idx) in filteredMenus" :key="item.id" class="space-y-2">
+              <div
+                v-for="(item, idx) in filteredMenus"
+                :key="item.id"
+                draggable="true"
+                @dragstart="onDragStart($event, idx)"
+                @dragover="onDragOver($event)"
+                @drop="onDrop($event, idx)"
+                class="space-y-2 cursor-grab active:cursor-grabbing transition-transform duration-150"
+              >
                 
                 <!-- IF SECTION HEADER DIVIDER GROUP ITEM -->
-                <div v-if="item.type === 'Header'" class="p-3.5 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl flex items-center justify-between mt-4">
+                <div v-if="item.type === 'Header'" class="p-3.5 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl flex items-center justify-between mt-4 hover:border-amber-500/60 shadow-xs">
                   <div class="flex items-center gap-3">
+                    <i class="bi bi-grip-vertical text-amber-500/70 text-lg cursor-grab"></i>
+
                     <span class="w-6 h-6 rounded-lg bg-amber-500 text-stone-950 font-mono text-[11px] font-extrabold flex items-center justify-center shadow-sm">
                       #{{ idx + 1 }}
                     </span>
@@ -189,26 +236,28 @@ const deleteMenu = (id, name) => {
                           {{ item.app_code }}
                         </span>
                       </div>
-                      <p class="text-[10px] text-stone-400 font-mono mt-0.5">Sidebar Group Divider Header</p>
+                      <p class="text-[10px] text-stone-400 font-mono mt-0.5">Sidebar Group Divider Header (Drag to move)</p>
                     </div>
                   </div>
 
                   <div class="flex items-center gap-1">
-                    <button @click="moveOrder(item.id, 'up')" :disabled="idx === 0" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                    <button @click.stop="moveOrder(item.id, 'up')" :disabled="idx === 0" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 disabled:opacity-30">
                       <i class="bi bi-arrow-up text-sm"></i>
                     </button>
-                    <button @click="moveOrder(item.id, 'down')" :disabled="idx === filteredMenus.length - 1" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                    <button @click.stop="moveOrder(item.id, 'down')" :disabled="idx === filteredMenus.length - 1" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 disabled:opacity-30">
                       <i class="bi bi-arrow-down text-sm"></i>
                     </button>
                     <div class="w-px h-4 bg-stone-200 dark:bg-white/10 mx-1"></div>
-                    <button @click="editMenu(item)" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500"><i class="bi bi-pencil text-sm"></i></button>
-                    <button @click="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500"><i class="bi bi-trash text-sm"></i></button>
+                    <button @click.stop="editMenu(item)" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500"><i class="bi bi-pencil text-sm"></i></button>
+                    <button @click.stop="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500"><i class="bi bi-trash text-sm"></i></button>
                   </div>
                 </div>
 
                 <!-- STANDARD MENU ITEM CARD -->
-                <div v-else class="p-3.5 bg-stone-50 dark:bg-white/[0.02] border border-stone-200 dark:border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/30 transition">
+                <div v-else class="p-3.5 bg-stone-50 dark:bg-white/[0.02] border border-stone-200 dark:border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/40 shadow-xs transition">
                   <div class="flex items-center gap-3">
+                    <i class="bi bi-grip-vertical text-stone-400 text-lg cursor-grab"></i>
+
                     <!-- Order Index Badge -->
                     <span class="w-6 h-6 rounded-lg bg-stone-200 dark:bg-white/10 text-stone-700 dark:text-stone-300 font-mono text-[11px] font-bold flex items-center justify-center">
                       #{{ idx + 1 }}
@@ -232,7 +281,7 @@ const deleteMenu = (id, name) => {
                   <div class="flex items-center gap-1">
                     <!-- Up / Down Re-order Buttons -->
                     <button
-                      @click="moveOrder(item.id, 'up')"
+                      @click.stop="moveOrder(item.id, 'up')"
                       :disabled="idx === 0"
                       class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-30 transition"
                       title="Move Up"
@@ -240,7 +289,7 @@ const deleteMenu = (id, name) => {
                       <i class="bi bi-arrow-up text-sm"></i>
                     </button>
                     <button
-                      @click="moveOrder(item.id, 'down')"
+                      @click.stop="moveOrder(item.id, 'down')"
                       :disabled="idx === filteredMenus.length - 1"
                       class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-30 transition"
                       title="Move Down"
@@ -250,10 +299,10 @@ const deleteMenu = (id, name) => {
 
                     <div class="w-px h-4 bg-stone-200 dark:bg-white/10 mx-1"></div>
 
-                    <button @click="editMenu(item)" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 transition" title="Edit">
+                    <button @click.stop="editMenu(item)" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 transition" title="Edit">
                       <i class="bi bi-pencil text-sm"></i>
                     </button>
-                    <button @click="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-rose-500/10 transition" title="Delete">
+                    <button @click.stop="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-rose-500/10 transition" title="Delete">
                       <i class="bi bi-trash text-sm"></i>
                     </button>
                   </div>
@@ -263,6 +312,7 @@ const deleteMenu = (id, name) => {
                 <div v-if="item.children && item.children.length" class="pl-8 space-y-2">
                   <div v-for="(child, cIdx) in item.children" :key="child.id" class="p-3 bg-stone-100/50 dark:bg-white/[0.01] border border-stone-200/70 dark:border-white/5 rounded-xl flex items-center justify-between">
                     <div class="flex items-center gap-3">
+                      <i class="bi bi-grip-vertical text-stone-400 text-xs"></i>
                       <span class="w-5 h-5 rounded-md bg-stone-200/70 dark:bg-white/5 text-stone-500 font-mono text-[10px] font-bold flex items-center justify-center">
                         {{ cIdx + 1 }}
                       </span>
@@ -274,17 +324,17 @@ const deleteMenu = (id, name) => {
                     </div>
 
                     <div class="flex items-center gap-1">
-                      <button @click="moveOrder(child.id, 'up')" :disabled="cIdx === 0" class="p-1 rounded-md text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                      <button @click.stop="moveOrder(child.id, 'up')" :disabled="cIdx === 0" class="p-1 rounded-md text-stone-400 hover:text-amber-500 disabled:opacity-30">
                         <i class="bi bi-arrow-up text-xs"></i>
                       </button>
-                      <button @click="moveOrder(child.id, 'down')" :disabled="cIdx === item.children.length - 1" class="p-1 rounded-md text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                      <button @click.stop="moveOrder(child.id, 'down')" :disabled="cIdx === item.children.length - 1" class="p-1 rounded-md text-stone-400 hover:text-amber-500 disabled:opacity-30">
                         <i class="bi bi-arrow-down text-xs"></i>
                       </button>
                       <div class="w-px h-3 bg-stone-200 dark:bg-white/10 mx-1"></div>
-                      <button @click="editMenu(child)" class="p-1 rounded-md text-stone-400 hover:text-amber-500">
+                      <button @click.stop="editMenu(child)" class="p-1 rounded-md text-stone-400 hover:text-amber-500">
                         <i class="bi bi-pencil text-xs"></i>
                       </button>
-                      <button @click="deleteMenu(child.id, child.name)" class="p-1 rounded-md text-stone-400 hover:text-rose-500">
+                      <button @click.stop="deleteMenu(child.id, child.name)" class="p-1 rounded-md text-stone-400 hover:text-rose-500">
                         <i class="bi bi-trash text-xs"></i>
                       </button>
                     </div>
