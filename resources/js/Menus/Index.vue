@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import InerminAppLayout from '../InerminAppLayout.vue'
 
@@ -10,7 +10,10 @@ const props = defineProps({
   modules: Array,
   privileges: Array,
   parent_menus: Array,
+  apps: Array,
 })
+
+const selectedAppFilter = ref('all')
 
 const activeMenuForm = ref({
   id: 0,
@@ -20,11 +23,23 @@ const activeMenuForm = ref({
   path: '',
   module_id: props.modules?.[0]?.id || 0,
   parent_id: 0,
+  app_code: '',
   is_active: 1,
   privileges: props.privileges?.map(p => p.id) || [],
 })
 
 const isEditing = ref(false)
+
+const filteredMenus = computed(() => {
+  if (!props.menus) return []
+  if (selectedAppFilter.value === 'all') return props.menus
+
+  return props.menus.filter(item => {
+    if (item.app_code === selectedAppFilter.value) return true
+    if (item.children && item.children.some(c => c.app_code === selectedAppFilter.value)) return true
+    return false
+  })
+})
 
 const editMenu = (item) => {
   isEditing.value = true
@@ -36,6 +51,7 @@ const editMenu = (item) => {
     path: item.path || '',
     module_id: props.modules?.find(m => m.controller + 'GetIndex' === item.path || m.path === item.path)?.id || 0,
     parent_id: item.parent_id || 0,
+    app_code: item.app_code || '',
     is_active: item.is_active ? 1 : 0,
     privileges: item.privileges || [],
   }
@@ -51,6 +67,7 @@ const resetForm = () => {
     path: '',
     module_id: props.modules?.[0]?.id || 0,
     parent_id: 0,
+    app_code: '',
     is_active: 1,
     privileges: props.privileges?.map(p => p.id) || [],
   }
@@ -62,6 +79,10 @@ const saveMenu = () => {
   })
 }
 
+const moveOrder = (id, direction) => {
+  router.get(`/administrator/menus/move-order/${id}/${direction}`, {}, { preserveScroll: true })
+}
+
 const deleteMenu = (id, name) => {
   if (confirm(`Are you sure you want to delete menu "${name}"?`)) {
     window.location.href = `/administrator/menus/delete/${id}`
@@ -71,67 +92,141 @@ const deleteMenu = (id, name) => {
 
 <template>
   <InerminAppLayout>
-    <div class="space-y-6 font-sans w-full">
+    <div class="space-y-6 font-sans w-full max-w-7xl mx-auto">
       
       <!-- Page Header -->
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage, sort, and structure admin navigation menus</p>
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{{ page_title }}</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage, group by application suite, and drag/order menu items</p>
         </div>
       </div>
 
-      <!-- Menu Builder Grid Layout (Left: Tree Hierarchy, Right: Create/Edit Form) -->
+      <!-- Application Suite Filter Tabs -->
+      <div class="flex items-center gap-2 border-b border-stone-200 dark:border-stone-800 overflow-x-auto pb-1 custom-scrollbar">
+        <button
+          @click="selectedAppFilter = 'all'"
+          :class="[
+            'px-4 py-2 font-bold text-xs rounded-t-xl transition whitespace-nowrap flex items-center gap-2 border-b-2',
+            selectedAppFilter === 'all'
+              ? 'border-amber-500 text-amber-500 bg-amber-500/10'
+              : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+          ]"
+        >
+          <i class="bi bi-grid-3x3-gap-fill text-sm"></i>
+          <span>All Applications</span>
+          <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-stone-200 dark:bg-stone-800 font-extrabold text-stone-700 dark:text-stone-300">
+            {{ menus ? menus.length : 0 }}
+          </span>
+        </button>
+
+        <button
+          v-for="app in apps"
+          :key="app.code"
+          @click="selectedAppFilter = app.code"
+          :class="[
+            'px-4 py-2 font-bold text-xs rounded-t-xl transition whitespace-nowrap flex items-center gap-2 border-b-2',
+            selectedAppFilter === app.code
+              ? 'border-amber-500 text-amber-500 bg-amber-500/10'
+              : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+          ]"
+        >
+          <i :class="app.icon || 'bi bi-app-indicator'"></i>
+          <span>{{ app.name }}</span>
+        </button>
+      </div>
+
+      <!-- Menu Builder Grid Layout (Left: Tree Hierarchy & Order, Right: Create/Edit Form) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Left Column: Menu Tree Hierarchy -->
+        <!-- Left Column: Menu Tree Hierarchy & Ordering -->
         <div class="lg:col-span-2 space-y-4">
           <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm">
             <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
               <span>Navigation Menu Structure</span>
-              <span class="text-xs text-slate-400 font-normal">Parent & Child Submenus</span>
+              <span class="text-xs text-slate-400 font-normal">Order & Re-arrange Navigation</span>
             </h3>
 
-            <div class="space-y-2">
-              <div v-for="item in menus" :key="item.id" class="space-y-2">
+            <div class="space-y-3">
+              <div v-for="(item, idx) in filteredMenus" :key="item.id" class="space-y-2">
                 
                 <!-- Parent Item Card -->
-                <div class="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl flex items-center justify-between">
+                <div class="p-3.5 bg-stone-50 dark:bg-white/[0.02] border border-stone-200 dark:border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/30 transition">
                   <div class="flex items-center gap-3">
-                    <i :class="[item.icon || 'bi bi-grid', 'text-indigo-600 dark:text-indigo-400 text-lg']"></i>
+                    <!-- Order Index Badge -->
+                    <span class="w-6 h-6 rounded-lg bg-stone-200 dark:bg-white/10 text-stone-700 dark:text-stone-300 font-mono text-[11px] font-bold flex items-center justify-center">
+                      #{{ idx + 1 }}
+                    </span>
+
+                    <i :class="[item.icon || 'bi bi-grid', 'text-amber-500 text-lg']"></i>
                     <div>
-                      <h4 class="font-bold text-xs text-slate-900 dark:text-white">{{ item.name }}</h4>
-                      <p class="text-[10px] text-slate-400 font-mono mt-0.5">{{ item.type }} • {{ item.path || '-' }}</p>
+                      <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-xs text-stone-900 dark:text-white">{{ item.name }}</h4>
+                        <span v-if="item.app_code" class="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.2 rounded border border-amber-500/20 uppercase">
+                          {{ item.app_code }}
+                        </span>
+                      </div>
+                      <p class="text-[10px] text-stone-400 font-mono mt-0.5">{{ item.type }} • {{ item.path || '-' }}</p>
                     </div>
                   </div>
 
                   <div class="flex items-center gap-1">
-                    <button @click="editMenu(item)" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition">
+                    <!-- Up / Down Re-order Buttons -->
+                    <button
+                      @click="moveOrder(item.id, 'up')"
+                      :disabled="idx === 0"
+                      class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-30 transition"
+                      title="Move Up"
+                    >
+                      <i class="bi bi-arrow-up text-sm"></i>
+                    </button>
+                    <button
+                      @click="moveOrder(item.id, 'down')"
+                      :disabled="idx === filteredMenus.length - 1"
+                      class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-30 transition"
+                      title="Move Down"
+                    >
+                      <i class="bi bi-arrow-down text-sm"></i>
+                    </button>
+
+                    <div class="w-px h-4 bg-stone-200 dark:bg-white/10 mx-1"></div>
+
+                    <button @click="editMenu(item)" class="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-500/10 transition" title="Edit">
                       <i class="bi bi-pencil text-sm"></i>
                     </button>
-                    <button @click="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition">
+                    <button @click="deleteMenu(item.id, item.name)" class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-rose-500/10 transition" title="Delete">
                       <i class="bi bi-trash text-sm"></i>
                     </button>
                   </div>
                 </div>
 
                 <!-- Submenus (Children) -->
-                <div v-if="item.children && item.children.length" class="pl-6 space-y-2">
-                  <div v-for="child in item.children" :key="child.id" class="p-3 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl flex items-center justify-between">
+                <div v-if="item.children && item.children.length" class="pl-8 space-y-2">
+                  <div v-for="(child, cIdx) in item.children" :key="child.id" class="p-3 bg-stone-100/50 dark:bg-white/[0.01] border border-stone-200/70 dark:border-white/5 rounded-xl flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <i :class="[child.icon || 'bi bi-grid', 'text-slate-500 text-sm']"></i>
+                      <span class="w-5 h-5 rounded-md bg-stone-200/70 dark:bg-white/5 text-stone-500 font-mono text-[10px] font-bold flex items-center justify-center">
+                        {{ cIdx + 1 }}
+                      </span>
+                      <i :class="[child.icon || 'bi bi-grid', 'text-stone-400 text-sm']"></i>
                       <div>
-                        <h5 class="font-semibold text-xs text-slate-800 dark:text-slate-200">{{ child.name }}</h5>
-                        <p class="text-[10px] text-slate-400 font-mono">{{ child.type }} • {{ child.path }}</p>
+                        <h5 class="font-semibold text-xs text-stone-800 dark:text-stone-200">{{ child.name }}</h5>
+                        <p class="text-[10px] text-stone-400 font-mono">{{ child.type }} • {{ child.path }}</p>
                       </div>
                     </div>
 
                     <div class="flex items-center gap-1">
-                      <button @click="editMenu(child)" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition">
-                        <i class="bi bi-pencil text-sm"></i>
+                      <button @click="moveOrder(child.id, 'up')" :disabled="cIdx === 0" class="p-1 rounded-md text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                        <i class="bi bi-arrow-up text-xs"></i>
                       </button>
-                      <button @click="deleteMenu(child.id, child.name)" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition">
-                        <i class="bi bi-trash text-sm"></i>
+                      <button @click="moveOrder(child.id, 'down')" :disabled="cIdx === item.children.length - 1" class="p-1 rounded-md text-stone-400 hover:text-amber-500 disabled:opacity-30">
+                        <i class="bi bi-arrow-down text-xs"></i>
+                      </button>
+                      <div class="w-px h-3 bg-stone-200 dark:bg-white/10 mx-1"></div>
+                      <button @click="editMenu(child)" class="p-1 rounded-md text-stone-400 hover:text-amber-500">
+                        <i class="bi bi-pencil text-xs"></i>
+                      </button>
+                      <button @click="deleteMenu(child.id, child.name)" class="p-1 rounded-md text-stone-400 hover:text-rose-500">
+                        <i class="bi bi-trash text-xs"></i>
                       </button>
                     </div>
                   </div>
@@ -139,8 +234,9 @@ const deleteMenu = (id, name) => {
 
               </div>
 
-              <div v-if="!menus || !menus.length" class="p-8 text-center text-slate-400">
-                No menus created yet.
+              <div v-if="!filteredMenus || !filteredMenus.length" class="p-8 text-center text-stone-400 text-xs">
+                <i class="bi bi-inbox text-3xl block mb-2 opacity-40"></i>
+                No menus found in this application suite filter.
               </div>
             </div>
 
@@ -157,12 +253,20 @@ const deleteMenu = (id, name) => {
             <form @submit.prevent="saveMenu" class="space-y-4">
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Menu Name *</label>
-                <input v-model="activeMenuForm.name" type="text" required placeholder="e.g. Absen Data" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100" />
+                <input v-model="activeMenuForm.name" type="text" required placeholder="e.g. Absen Data" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Application Suite Group</label>
+                <select v-model="activeMenuForm.app_code" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
+                  <option value="">-- General System Core --</option>
+                  <option v-for="a in apps" :key="a.code" :value="a.code">{{ a.name }} ({{ a.code }})</option>
+                </select>
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Type *</label>
-                <select v-model="activeMenuForm.type" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100">
+                <select v-model="activeMenuForm.type" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
                   <option value="Module">Module</option>
                   <option value="Route">Route / Controller</option>
                   <option value="URL">External URL</option>
@@ -171,19 +275,19 @@ const deleteMenu = (id, name) => {
 
               <div v-if="activeMenuForm.type === 'Module'">
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Select Module *</label>
-                <select v-model="activeMenuForm.module_id" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100">
+                <select v-model="activeMenuForm.module_id" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
                   <option v-for="m in modules" :key="m.id" :value="m.id">{{ m.name }} ({{ m.table_name }})</option>
                 </select>
               </div>
 
               <div v-else>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Path / URL *</label>
-                <input v-model="activeMenuForm.path" type="text" placeholder="e.g. AdminAbsenControllerGetIndex or /custom-url" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100" />
+                <input v-model="activeMenuForm.path" type="text" placeholder="e.g. AdminAbsenControllerGetIndex or /custom-url" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Parent Menu</label>
-                <select v-model="activeMenuForm.parent_id" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100">
+                <select v-model="activeMenuForm.parent_id" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
                   <option :value="0">-- Top Level (No Parent) --</option>
                   <option v-for="p in parent_menus" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
@@ -191,24 +295,24 @@ const deleteMenu = (id, name) => {
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Icon Class</label>
-                <input v-model="activeMenuForm.icon" type="text" placeholder="bi bi-grid, fa fa-glass" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100" />
+                <input v-model="activeMenuForm.icon" type="text" placeholder="bi bi-grid, bi bi-people" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Privilege Permissions</label>
-                <div class="space-y-1.5 max-h-40 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div class="space-y-1.5 max-h-40 overflow-y-auto p-3 bg-stone-100 dark:bg-white/5 rounded-2xl border border-stone-200 dark:border-white/10">
                   <div v-for="priv in privileges" :key="priv.id" class="flex items-center gap-2">
-                    <input type="checkbox" :id="'priv_'+priv.id" :value="priv.id" v-model="activeMenuForm.privileges" class="rounded text-indigo-600" />
-                    <label :for="'priv_'+priv.id" class="text-xs text-slate-800 dark:text-slate-200 font-semibold">{{ priv.name }}</label>
+                    <input type="checkbox" :id="'priv_'+priv.id" :value="priv.id" v-model="activeMenuForm.privileges" class="rounded text-amber-500" />
+                    <label :for="'priv_'+priv.id" class="text-xs text-stone-800 dark:text-stone-200 font-semibold">{{ priv.name }}</label>
                   </div>
                 </div>
               </div>
 
               <div class="pt-2 flex items-center justify-end gap-2">
-                <button v-if="isEditing" type="button" @click="resetForm" class="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl">
+                <button v-if="isEditing" type="button" @click="resetForm" class="px-4 py-2.5 bg-stone-100 dark:bg-white/5 text-stone-600 dark:text-stone-300 font-bold text-xs rounded-2xl">
                   Cancel
                 </button>
-                <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition">
+                <button type="submit" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs rounded-2xl shadow-md transition">
                   {{ isEditing ? 'Update Menu' : 'Save Menu' }}
                 </button>
               </div>

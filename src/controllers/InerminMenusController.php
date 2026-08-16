@@ -51,6 +51,7 @@ class InerminMenusController extends InerminController
         $data['modules'] = DB::table('cms_moduls')->where('is_protected', 0)->orderBy('name', 'asc')->get();
         $data['privileges'] = DB::table('cms_privileges')->orderBy('name', 'asc')->get();
         $data['parent_menus'] = DB::table('cms_menus')->where('parent_id', 0)->orderBy('name', 'asc')->get();
+        $data['apps'] = DB::table('cms_apps')->where('is_active', 1)->orderBy('name', 'asc')->get();
 
         return Inertia::render('Inermin/Menus/Index', $data);
     }
@@ -64,6 +65,7 @@ class InerminMenusController extends InerminController
         $path = Request::input('path');
         $module_id = Request::input('module_id');
         $parent_id = Request::input('parent_id', 0);
+        $app_code = Request::input('app_code');
         $is_active = Request::input('is_active', 1);
         $privileges = Request::input('privileges', []);
 
@@ -71,6 +73,9 @@ class InerminMenusController extends InerminController
             $mod = DB::table('cms_moduls')->where('id', $module_id)->first();
             if ($mod) {
                 $path = $mod->controller ? $mod->controller . 'GetIndex' : $mod->path;
+                if (!$app_code && !empty($mod->app_code)) {
+                    $app_code = $mod->app_code;
+                }
             }
         }
 
@@ -80,6 +85,7 @@ class InerminMenusController extends InerminController
             'icon' => $icon,
             'path' => $path,
             'parent_id' => $parent_id,
+            'app_code' => $app_code,
             'is_active' => $is_active ? 1 : 0,
             'updated_at' => now(),
         ];
@@ -110,6 +116,30 @@ class InerminMenusController extends InerminController
         }
 
         return redirect(Inermin::adminPath('menus'))->with('success', 'Menu saved successfully!');
+    }
+
+    public function postMoveOrder($id, $direction)
+    {
+        $current = DB::table('cms_menus')->where('id', $id)->first();
+        if (!$current) {
+            return redirect()->back();
+        }
+
+        $operator = $direction === 'up' ? '<' : '>';
+        $order = $direction === 'up' ? 'desc' : 'asc';
+
+        $target = DB::table('cms_menus')
+            ->where('parent_id', $current->parent_id)
+            ->where('sorting', $operator, $current->sorting)
+            ->orderBy('sorting', $order)
+            ->first();
+
+        if ($target) {
+            DB::table('cms_menus')->where('id', $current->id)->update(['sorting' => $target->sorting]);
+            DB::table('cms_menus')->where('id', $target->id)->update(['sorting' => $current->sorting]);
+        }
+
+        return redirect()->back()->with('success', 'Menu order updated!');
     }
 
     public function postSaveSorting()

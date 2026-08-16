@@ -75,6 +75,7 @@ Route::group([
         Route::post('/menus/add', [InerminMenusController::class, 'postAddSave']);
         Route::post('/menus/save', [InerminMenusController::class, 'postSave']);
         Route::post('/menus/save-sorting', [InerminMenusController::class, 'postSaveSorting']);
+        Route::get('/menus/move-order/{id}/{direction}', [InerminMenusController::class, 'postMoveOrder']);
         Route::get('/menus/edit/{id}', [InerminMenusController::class, 'getEdit']);
         Route::post('/menus/edit/{id}', [InerminMenusController::class, 'postEditSave']);
         Route::get('/menus/delete/{id}', [InerminMenusController::class, 'getDelete']);
