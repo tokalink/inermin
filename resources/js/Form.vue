@@ -105,17 +105,18 @@ const clearFile = (fieldName) => {
 
 // Option normalization for selects / radios / checkboxes
 const getOptions = (field) => {
-  if (!field.dataenum) return []
-  if (Array.isArray(field.dataenum)) {
-    return field.dataenum.map(opt => {
+  const enumData = field.dataenum || field.enum
+  if (!enumData) return []
+  if (Array.isArray(enumData)) {
+    return enumData.map(opt => {
       if (typeof opt === 'object' && opt !== null) {
-        return { value: opt.value || opt.id, label: opt.label || opt.name || opt.value }
+        return { value: opt.value ?? opt.id, label: opt.label ?? opt.name ?? opt.value }
       }
       return { value: opt, label: opt }
     })
   }
-  if (typeof field.dataenum === 'object') {
-    return Object.entries(field.dataenum).map(([val, label]) => ({ value: val, label: label }))
+  if (typeof enumData === 'object') {
+    return Object.entries(enumData).map(([val, label]) => ({ value: val, label: label }))
   }
   return []
 }
