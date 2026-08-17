@@ -25,7 +25,7 @@ class InerminApiEngineController extends Controller
             $expectedMethod = strtoupper($api->method_type ?: 'GET');
             $currentMethod = strtoupper($request->method());
 
-            if ($expectedMethod !== $currentMethod && $expectedMethod !== 'POST') {
+            if ($currentMethod !== $expectedMethod) {
                 return response()->json([
                     'api_status' => 0,
                     'api_message' => "Method {$currentMethod} not allowed. Expected {$expectedMethod}.",
@@ -164,14 +164,20 @@ class InerminApiEngineController extends Controller
                     }
 
                     if (!empty($api->sql_orderby)) {
-                        $parts = explode(',', $api->sql_orderby);
-                        if (count($parts) == 2) {
-                            $query->orderBy(trim($parts[0]), trim($parts[1]));
+                        $parts = array_map('trim', explode(',', $api->sql_orderby));
+                        $column = $parts[0] ?? '';
+                        $direction = strtolower($parts[1] ?? 'desc');
+
+                        if (count($parts) == 2
+                            && preg_match('/^[a-zA-Z0-9_]+$/', $column)
+                            && in_array($direction, ['asc', 'desc']))
+                        {
+                            $query->orderBy($table . '.' . $column, $direction);
                         } else {
-                            $query->orderByRaw($api->sql_orderby);
+                            $query->orderBy($table . '.id', 'desc');
                         }
                     } else {
-                        $query->orderBy('id', 'desc');
+                        $query->orderBy($table . '.id', 'desc');
                     }
 
                     $limit = (int) $request->input('limit', 20);

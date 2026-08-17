@@ -112,11 +112,29 @@ class InerminStatisticController extends InerminController
             // Execute SQL query if provided safely
             if (!empty($config['sql'])) {
                 try {
-                    $sql = $config['sql'];
+                    $sql = trim($config['sql']);
+
+                    // Only SELECT statements are allowed
+                    if (!preg_match('/^SELECT\s+/i', $sql)) {
+                        throw new \Exception('Only SELECT queries are allowed in statistic builder.');
+                    }
+
+                    $forbidden = [';', '--', '/*', '*/', 'UNION', 'INSERT', 'UPDATE', 'DELETE',
+                        'DROP', 'TRUNCATE', 'ALTER', 'CREATE', 'EXEC', 'EXECUTE', 'UNHEX',
+                        'LOAD_FILE', 'INTO OUTFILE', 'INTO DUMPFILE', 'SLEEP', 'BENCHMARK'];
+                    foreach ($forbidden as $keyword) {
+                        if (stripos($sql, $keyword) !== false) {
+                            throw new \Exception('Forbidden SQL keyword detected: ' . $keyword);
+                        }
+                    }
+
                     // Replace session placeholders e.g. [admin_id]
                     foreach (Session::all() as $sKey => $sVal) {
                         if (is_string($sVal) || is_numeric($sVal)) {
-                            $sql = str_replace('[' . $sKey . ']', $sVal, $sql);
+                            $replacement = is_numeric($sVal)
+                                ? $sVal
+                                : "'" . addslashes($sVal) . "'";
+                            $sql = str_replace('[' . $sKey . ']', $replacement, $sql);
                         }
                     }
                     $queryResult = DB::select($sql);

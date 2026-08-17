@@ -220,9 +220,17 @@ class InerminController extends Controller
 
         // Sorting
         if ($orderby = $request->input('orderby', $this->orderby)) {
-            $orderParts = explode(',', $orderby);
-            if (count($orderParts) == 2) {
-                $query->orderBy($this->table . '.' . $orderParts[0], $orderParts[1]);
+            $orderParts = array_map('trim', explode(',', $orderby));
+            $column = $orderParts[0] ?? '';
+            $direction = strtolower($orderParts[1] ?? 'desc');
+
+            if (count($orderParts) == 2
+                && preg_match('/^[a-zA-Z0-9_]+$/', $column)
+                && in_array($direction, ['asc', 'desc']))
+            {
+                $query->orderBy($this->table . '.' . $column, $direction);
+            } else {
+                $query->orderBy($this->table . '.' . $this->primary_key, 'desc');
             }
         } else {
             $query->orderBy($this->table . '.' . $this->primary_key, 'desc');

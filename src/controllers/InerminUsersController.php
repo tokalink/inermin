@@ -2,6 +2,7 @@
 
 namespace Tokalink\Inermin\controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
@@ -56,6 +57,60 @@ class InerminUsersController extends InerminController
         } else {
             unset($postdata['password']);
         }
+    }
+
+    public function getIndex(?Request $request = null)
+    {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
+        return parent::getIndex($request);
+    }
+
+    public function getAdd()
+    {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
+        return parent::getAdd();
+    }
+
+    public function postAddSave()
+    {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
+        return parent::postAddSave();
+    }
+
+    public function getEdit($id = null)
+    {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
+        return parent::getEdit($id);
+    }
+
+    public function postEditSave($id = null)
+    {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
+        return parent::postEditSave($id);
+    }
+
+    public function getDelete($id = null)
+    {
+        if (!\Tokalink\Inermin\helpers\Inermin::isSuperadmin()) {
+            return redirect(\Tokalink\Inermin\helpers\Inermin::adminPath())->with('error', 'Access Denied!');
+        }
+
+        return parent::getDelete($id);
     }
 
     public function getProfile()

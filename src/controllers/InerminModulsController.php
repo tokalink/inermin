@@ -11,6 +11,15 @@ use Inertia\Inertia;
 
 class InerminModulsController extends InerminController
 {
+    public function __construct()
+    {
+        parent::__construct();
+
+        if (!Inermin::isSuperadmin()) {
+            abort(403, 'Access Denied! Only superadmin accounts can access the module generator.');
+        }
+    }
+
     public function cbInit()
     {
         $this->table = 'cms_moduls';
@@ -84,7 +93,16 @@ class InerminModulsController extends InerminController
             $rawPath = $name ?: $table_name;
         }
         $path = Str::slug(str_replace('_', ' ', $rawPath), '_');
-        $baseController = Request::input('controller') ?: 'Admin' . Str::studly($path) . 'Controller';
+
+        $baseController = Request::input('controller');
+        if ($baseController) {
+            $baseController = preg_replace('/[^A-Za-z0-9]/', '', $baseController);
+            if (! $baseController) {
+                $baseController = 'Admin' . Str::studly($path) . 'Controller';
+            }
+        } else {
+            $baseController = 'Admin' . Str::studly($path) . 'Controller';
+        }
         $id = Request::input('id');
 
         $subFolder = '';

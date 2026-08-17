@@ -49,6 +49,8 @@ class InerminAuthController extends Controller
             Session::put('admin_privileges_name', $priv ? $priv->name : 'Administrator');
             Session::put('admin_theme_color', $priv ? $priv->theme_color : 'theme-indigo');
 
+            $request->session()->regenerate();
+
             return redirect()->to(Inermin::adminPath());
         }
 

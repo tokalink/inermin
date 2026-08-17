@@ -156,7 +156,7 @@ class Inermin
 
             return $role ? (bool) $role->{$action} : false;
         } catch (\Exception $e) {
-            return true;
+            return false;
         }
     }
 
