@@ -13,8 +13,7 @@ use Tokalink\Inermin\controllers\InerminApiController;
 use Tokalink\Inermin\controllers\InerminEmailController;
 use Tokalink\Inermin\controllers\InerminStatisticController;
 use Tokalink\Inermin\controllers\InerminApiEngineController;
-use Tokalink\Inermin\controllers\InerminAppsController;
-use Tokalink\Inermin\controllers\InerminTenantsController;
+
 use Tokalink\Inermin\middleware\InerminAuthMiddleware;
 use Tokalink\Inermin\middleware\InerminShareInertiaData;
 
@@ -40,21 +39,6 @@ Route::group([
         Route::match(['get', 'post'], '/lov-data', [InerminApiController::class, 'getLovData']);
 
         // Built-in System Modules
-        Route::get('/tenants', [InerminTenantsController::class, 'getIndex']);
-        Route::get('/tenants/add', [InerminTenantsController::class, 'getAdd']);
-        Route::post('/tenants/add', [InerminTenantsController::class, 'postAddSave']);
-        Route::get('/tenants/edit/{id}', [InerminTenantsController::class, 'getEdit']);
-        Route::post('/tenants/edit/{id}', [InerminTenantsController::class, 'postEditSave']);
-        Route::get('/tenants/delete/{id}', [InerminTenantsController::class, 'getDelete']);
-        Route::get('/tenants/impersonate/{id}', [InerminTenantsController::class, 'getImpersonate']);
-        Route::get('/tenants/stop-impersonate', [InerminTenantsController::class, 'getStopImpersonate']);
-
-        Route::get('/apps', [InerminAppsController::class, 'getIndex']);
-        Route::get('/apps/add', [InerminAppsController::class, 'getAdd']);
-        Route::post('/apps/add', [InerminAppsController::class, 'postAddSave']);
-        Route::get('/apps/edit/{id}', [InerminAppsController::class, 'getEdit']);
-        Route::post('/apps/edit/{id}', [InerminAppsController::class, 'postEditSave']);
-        Route::get('/apps/delete/{id}', [InerminAppsController::class, 'getDelete']);
 
         Route::get('/users', [InerminUsersController::class, 'getIndex']);
         Route::get('/users/add', [InerminUsersController::class, 'getAdd']);
@@ -152,30 +136,5 @@ try {
     // Schema or table not ready fallback
 }
 
-// Dynamic App Suite Landing Routes (Standalone /mutasi and Central /administrator/mutasi)
-try {
-    if (\Illuminate\Support\Facades\Schema::hasTable('cms_apps')) {
-        $apps = \Illuminate\Support\Facades\DB::table('cms_apps')
-            ->whereNotNull('code')
-            ->where('code', '!=', '')
-            ->where('is_active', 1)
-            ->get();
 
-        foreach ($apps as $appItem) {
-            $appCode = trim($appItem->code, '/');
-            
-            // Standalone Root Route (e.g. /mutasi)
-            Route::get('/' . $appCode, function () use ($appItem) {
-                return (new \Tokalink\Inermin\controllers\InerminAppsController)->getAppLanding($appItem->code);
-            })->middleware(['web', InerminShareInertiaData::class, InerminAuthMiddleware::class]);
-
-            // Central Admin Route (e.g. /administrator/mutasi)
-            Route::get($prefix . '/' . $appCode, function () use ($appItem) {
-                return (new \Tokalink\Inermin\controllers\InerminAppsController)->getAppLanding($appItem->code);
-            })->middleware(['web', InerminShareInertiaData::class, InerminAuthMiddleware::class]);
-        }
-    }
-} catch (\Exception $e) {
-    // Schema or table not ready fallback
-}
 

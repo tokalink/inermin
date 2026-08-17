@@ -55,14 +55,7 @@ class InerminModulsController extends InerminController
 
     public function getStep1($id = 0)
     {
-        // Auto-upgrade cms_moduls schema if missing app_code column
-        if (\Illuminate\Support\Facades\Schema::hasTable('cms_moduls')) {
-            if (!\Illuminate\Support\Facades\Schema::hasColumn('cms_moduls', 'app_code')) {
-                \Illuminate\Support\Facades\Schema::table('cms_moduls', function ($table) {
-                    $table->string('app_code')->nullable()->after('controller');
-                });
-            }
-        }
+
 
         $data = [];
         $data['page_title'] = 'Module Generator - Step 1 (Module Info)';
@@ -70,11 +63,10 @@ class InerminModulsController extends InerminController
         $data['id'] = $id;
         $data['row'] = $id ? DB::table('cms_moduls')->where('id', $id)->first() : null;
         $mainTables = Inermin::listTables();
-        $tenantTables = Inermin::listTables('tenant');
-        $allTables = array_unique(array_merge($mainTables, $tenantTables));
+        $allTables = $mainTables;
         sort($allTables);
         $data['tables'] = array_values($allTables);
-        $data['apps'] = DB::table('cms_apps')->where('is_active', 1)->orderBy('name', 'asc')->get();
+
 
         return Inertia::render('Inermin/Modules/Wizard', $data);
     }
@@ -85,7 +77,7 @@ class InerminModulsController extends InerminController
         $module_type = Request::input('module_type', 'crud');
         $table_name = Request::input('table_name') ?: '';
         $icon = Request::input('icon') ?: 'bi bi-boxes';
-        $app_code = Request::input('app_code');
+
         
         $rawPath = Request::input('path');
         if (!$rawPath) {
@@ -95,10 +87,9 @@ class InerminModulsController extends InerminController
         $baseController = Request::input('controller') ?: 'Admin' . Str::studly($path) . 'Controller';
         $id = Request::input('id');
 
-        // Sub-folder handling based on App Code
-        $subFolder = $app_code ? Str::studly($app_code) : '';
-        $namespace = $subFolder ? "App\\Http\\Controllers\\{$subFolder}" : "App\\Http\\Controllers";
-        $storedController = $subFolder ? "{$subFolder}\\{$baseController}" : $baseController;
+        $subFolder = '';
+        $namespace = "App\\Http\\Controllers";
+        $storedController = $baseController;
 
         if (!$id) {
             if (DB::table('cms_moduls')->where('path', $path)->whereNull('deleted_at')->exists()) {
@@ -141,7 +132,7 @@ class InerminModulsController extends InerminController
                 'icon' => $icon,
                 'path' => $path,
                 'controller' => $storedController,
-                'app_code' => $app_code,
+
                 'is_protected' => 0,
                 'is_active' => 1,
                 'created_at' => now(),
@@ -155,7 +146,7 @@ class InerminModulsController extends InerminController
                     'icon' => $icon,
                     'path' => str_replace('\\', '', $storedController) . 'GetIndex',
                     'type' => 'Route',
-                    'app_code' => $app_code,
+
                     'is_active' => 1,
                     'sorting' => $menuSort,
                     'parent_id' => 0,

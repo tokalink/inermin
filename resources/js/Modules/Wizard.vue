@@ -26,7 +26,7 @@ const step1Form = ref({
   icon: props.row?.icon || 'bi bi-boxes',
   path: props.row?.path || '',
   controller: props.row?.controller || '',
-  app_code: props.row?.app_code || '',
+
   create_menu: true,
 })
 
@@ -228,21 +228,7 @@ const removeFormField = (idx) => {
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Target Application Suite (Clean Sub-folder Organization)</label>
-            <select
-              v-model="step1Form.app_code"
-              class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-[rgb(var(--accent-rgb))] focus:outline-none transition"
-            >
-              <option value="">-- General System Module (Default: app/Http/Controllers/) --</option>
-              <option v-for="a in apps" :key="a.code" :value="a.code">
-                {{ a.name }} (Sub-folder: app/Http/Controllers/{{ a.code.charAt(0).toUpperCase() + a.code.slice(1) }}/)
-              </option>
-            </select>
-            <span class="text-[10px] text-stone-400 mt-1 block">
-              Organizes generated controllers & custom view scaffolds inside clean sub-folders (e.g. <code>app/Http/Controllers/Mutasi/</code>).
-            </span>
-          </div>
+
 
           <div>
             <label class="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">Module Name *</label>

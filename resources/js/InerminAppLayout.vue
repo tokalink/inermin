@@ -11,7 +11,7 @@ const user = computed(() => page.props.auth?.user || {})
 const menu = computed(() => page.props.menu || [])
 const flash = computed(() => page.props.flash || {})
 const rawNotifications = computed(() => page.props.notifications || [])
-const impersonateTenantName = computed(() => page.props.impersonate_tenant_name || null)
+
 
 // Notification State & Actions
 const isNotificationsOpen = ref(false)
@@ -477,17 +477,7 @@ onMounted(() => {
     <!-- Main Content Shell -->
     <div class="flex-1 flex flex-col min-w-0 min-h-screen">
       
-      <!-- Impersonation Banner (IT Support Mode) -->
-      <div v-if="impersonateTenantName" class="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-stone-950 px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md relative z-40">
-        <div class="flex items-center gap-2">
-          <i class="bi bi-incognito text-base"></i>
-          <span>IT SUPPORT IMPERSONATION MODE: You are currently accessing Tenant <span class="font-black underline">{{ impersonateTenantName }}</span></span>
-        </div>
-        <Link :href="adminPath + '/tenants/stop-impersonate'" class="px-3 py-1 rounded-lg bg-stone-950 text-white font-bold text-[11px] hover:bg-stone-800 transition flex items-center gap-1">
-          <i class="bi bi-box-arrow-right"></i>
-          <span>Exit IT Support Mode</span>
-        </Link>
-      </div>
+
 
       <!-- Topbar Header -->
       <header class="sticky top-0 z-30 glass bg-white/75 dark:bg-[#0c0b09]/75 border-b border-stone-200 dark:border-white/5 px-4 lg:px-8 h-16 flex items-center justify-between transition-colors">

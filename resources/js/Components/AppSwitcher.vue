@@ -69,7 +69,7 @@ const selectApp = (appCode) => {
             <i class="bi bi-box-seam-fill text-amber-500 text-base"></i>
             <span class="font-display font-bold text-xs text-white tracking-wider uppercase">Application Suites</span>
           </div>
-          <span class="text-[10px] font-mono font-bold text-stone-400 bg-white/5 px-2 py-0.5 rounded-full">SaaS Ecosystem</span>
+
         </div>
 
         <!-- Apps Grid -->

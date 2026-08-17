@@ -60,7 +60,7 @@ class InerminMenusController extends InerminController
         $data['modules'] = DB::table('cms_moduls')->where('is_protected', 0)->orderBy('name', 'asc')->get();
         $data['privileges'] = DB::table('cms_privileges')->orderBy('name', 'asc')->get();
         $data['parent_menus'] = DB::table('cms_menus')->where('parent_id', 0)->orderBy('name', 'asc')->get();
-        $data['apps'] = DB::table('cms_apps')->where('is_active', 1)->orderBy('name', 'asc')->get();
+
         $data['group_names'] = DB::table('cms_menus')->whereNotNull('group_name')->where('group_name', '!=', '')->pluck('group_name')->unique()->values()->toArray();
 
         return Inertia::render('Inermin/Menus/Index', $data);
@@ -75,7 +75,7 @@ class InerminMenusController extends InerminController
         $path = Request::input('path');
         $module_id = Request::input('module_id');
         $parent_id = Request::input('parent_id', 0);
-        $app_code = Request::input('app_code');
+
         $is_active = Request::input('is_active', 1);
         $privileges = Request::input('privileges', []);
 
@@ -85,9 +85,7 @@ class InerminMenusController extends InerminController
             $mod = DB::table('cms_moduls')->where('id', $module_id)->first();
             if ($mod) {
                 $path = $mod->controller ? $mod->controller . 'GetIndex' : $mod->path;
-                if (!$app_code && !empty($mod->app_code)) {
-                    $app_code = $mod->app_code;
-                }
+                // No app code
             }
         }
 
@@ -97,7 +95,7 @@ class InerminMenusController extends InerminController
             'icon' => $icon,
             'path' => $path,
             'parent_id' => $parent_id,
-            'app_code' => $app_code,
+
             'group_name' => $group_name,
             'is_active' => $is_active ? 1 : 0,
             'updated_at' => now(),

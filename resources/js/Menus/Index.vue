@@ -24,7 +24,7 @@ const activeMenuForm = ref({
   path: '',
   module_id: props.modules?.[0]?.id || 0,
   parent_id: 0,
-  app_code: '',
+
   group_name: '',
   is_active: 1,
   privileges: props.privileges?.map(p => p.id) || [],
@@ -36,11 +36,7 @@ const filteredMenus = computed(() => {
   if (!props.menus) return []
   if (selectedAppFilter.value === 'all') return props.menus
 
-  return props.menus.filter(item => {
-    if (item.app_code === selectedAppFilter.value) return true
-    if (item.children && item.children.some(c => c.app_code === selectedAppFilter.value)) return true
-    return false
-  })
+
 })
 
 // Native Drag & Drop Handlers
@@ -83,7 +79,7 @@ const addSectionHeaderGroup = () => {
   activeMenuForm.value.name = 'NEW SECTION GROUP'
   activeMenuForm.value.icon = 'bi bi-folder-fill'
   if (selectedAppFilter.value !== 'all') {
-    activeMenuForm.value.app_code = selectedAppFilter.value
+
   }
 }
 
@@ -97,7 +93,7 @@ const editMenu = (item) => {
     path: item.path || '',
     module_id: props.modules?.find(m => m.controller + 'GetIndex' === item.path || m.path === item.path)?.id || 0,
     parent_id: item.parent_id || 0,
-    app_code: item.app_code || '',
+
     group_name: item.group_name || '',
     is_active: item.is_active ? 1 : 0,
     privileges: item.privileges || [],
@@ -114,7 +110,7 @@ const resetForm = () => {
     path: '',
     module_id: props.modules?.[0]?.id || 0,
     parent_id: 0,
-    app_code: '',
+
     group_name: '',
     is_active: 1,
     privileges: props.privileges?.map(p => p.id) || [],
@@ -232,9 +228,7 @@ const deleteMenu = (id, name) => {
                         <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
                           SECTION GROUP
                         </span>
-                        <span v-if="item.app_code" class="text-[9px] font-mono font-bold bg-stone-800 text-stone-300 px-1.5 py-0.2 rounded uppercase">
-                          {{ item.app_code }}
-                        </span>
+
                       </div>
                       <p class="text-[10px] text-stone-400 font-mono mt-0.5">Sidebar Group Divider Header (Drag to move)</p>
                     </div>
@@ -270,9 +264,7 @@ const deleteMenu = (id, name) => {
                         <span v-if="item.group_name" class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                           {{ item.group_name }}
                         </span>
-                        <span v-if="item.app_code" class="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.2 rounded border border-amber-500/20 uppercase">
-                          {{ item.app_code }}
-                        </span>
+
                       </div>
                       <p class="text-[10px] text-stone-400 font-mono mt-0.5">{{ item.type }} • {{ item.path || '-' }}</p>
                     </div>
@@ -375,13 +367,7 @@ const deleteMenu = (id, name) => {
                 </select>
               </div>
 
-              <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Application Suite Group</label>
-                <select v-model="activeMenuForm.app_code" class="w-full bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-stone-900 dark:text-white">
-                  <option value="">-- General System Core --</option>
-                  <option v-for="a in apps" :key="a.code" :value="a.code">{{ a.name }} ({{ a.code }})</option>
-                </select>
-              </div>
+
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Section Group Tag / Header Name</label>
