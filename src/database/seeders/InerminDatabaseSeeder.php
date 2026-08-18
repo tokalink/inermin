@@ -5,6 +5,7 @@ namespace Tokalink\Inermin\database\seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class InerminDatabaseSeeder extends Seeder
 {
