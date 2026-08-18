@@ -31,7 +31,7 @@ const deleteModule = (id, name) => {
         </div>
 
         <Link
-          :href="`${adminPath.value}/modules/step1`"
+          :href="`${adminPath}/modules/step1`"
           class="px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 self-start sm:self-auto"
           style="background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent-deep))); box-shadow: 0 6px 20px -6px rgba(var(--accent-rgb), 0.5);"
         >
@@ -123,7 +123,7 @@ const deleteModule = (id, name) => {
                 <td class="py-3.5 px-4 text-right">
                   <div class="inline-flex items-center gap-2">
                     <Link
-                      :href="`${adminPath.value}/modules/step1/${item.id}`"
+                      :href="`${adminPath}/modules/step1/${item.id}`"
                       class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-stone-200 dark:border-white/10 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/5 font-bold text-xs rounded-xl transition"
                     >
                       <i class="bi bi-pencil-square text-xs"></i>
