@@ -60,9 +60,18 @@ class InerminInstallCommand extends Command
         $this->info('=====================================================');
         $this->info(' Inermin SPA Admin installed successfully! 🎉');
         $this->info(' Superadmin Credentials:');
-        $this->info(' Email    : admin@inermin.com');
-        $this->info(' Password : 123456');
-        $this->info(' Admin URL: /administrator');
+        
+        $adminEmail = env('INERMIN_ADMIN_EMAIL', 'admin@inermin.com');
+        $this->info(' Email    : ' . $adminEmail);
+        
+        if (!env('INERMIN_ADMIN_PASSWORD')) {
+            $this->info(' Password : (Auto-generated and shown during DB seeding)');
+            $this->warn(' Note: Set INERMIN_ADMIN_PASSWORD in .env to define explicitly.');
+        } else {
+            $this->info(' Password : (As defined in .env)');
+        }
+        
+        $this->info(' Admin URL: /' . config('inermin.ADMIN_PATH', 'administrator'));
         $this->info('=====================================================');
     }
 
