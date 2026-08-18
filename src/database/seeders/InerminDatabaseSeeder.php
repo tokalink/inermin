@@ -21,17 +21,25 @@ class InerminDatabaseSeeder extends Seeder
             ]);
         }
 
-        // 2. Default User
+        // 2. Default User (credentials from ENV - never use weak hardcoded default in production)
         if (DB::table('cms_users')->count() == 0) {
+            $adminEmail = env('INERMIN_ADMIN_EMAIL', 'admin@inermin.com');
+            $adminPassword = env('INERMIN_ADMIN_PASSWORD', Str::random(16));
+
             DB::table('cms_users')->insert([
                 'id' => 1,
                 'name' => 'Super Admin',
-                'email' => 'admin@inermin.com',
-                'password' => Hash::make('123456'),
+                'email' => $adminEmail,
+                'password' => Hash::make($adminPassword),
                 'id_cms_privileges' => 1,
                 'status' => 'Active',
                 'created_at' => now(),
             ]);
+
+            if (!env('INERMIN_ADMIN_PASSWORD')) {
+                $this->command?->info("Generated admin password: {$adminPassword}");
+                $this->command?->warn('Set INERMIN_ADMIN_PASSWORD in .env to control it explicitly.');
+            }
         }
 
         // 3. System Modules

@@ -100,7 +100,7 @@ const removeWidget = async (componentID) => {
   isSaving.value = true
 
   try {
-    await axios.get(adminPath.value + '/statistic_builder/delete-component/' + componentID)
+    await axios.post(adminPath.value + '/statistic_builder/delete-component/' + componentID)
     componentsList.value = componentsList.value.filter(c => c.componentID !== componentID)
     saveMessage.value = 'Widget removed'
   } catch (e) {

@@ -232,7 +232,7 @@ onMounted(() => {
                 <p class="text-xs font-bold text-slate-900 dark:text-white">{{ user.name }}</p>
                 <p class="text-[10px] text-slate-400">{{ user.privilege_name }}</p>
               </div>
-              <Link :href="adminPath + '/logout'" class="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+              <Link :href="adminPath + '/logout'" method="post" as="button" class="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>

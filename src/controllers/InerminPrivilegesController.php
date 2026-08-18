@@ -29,7 +29,7 @@ class InerminPrivilegesController extends InerminController
         ];
     }
 
-    public function getIndex(Request $request = null)
+    public function getIndex(?Request $request = null)
     {
         if (!Inermin::isSuperadmin()) {
             return redirect(Inermin::adminPath())->with('error', 'Access Denied! Only superadmin accounts can manage privileges.');
@@ -108,6 +108,7 @@ class InerminPrivilegesController extends InerminController
 
         $this->savePrivilegeRoles($privilegeId, $request->input('roles', []));
 
+        Inermin::clearCache();
         Inermin::insertLog('Added new privilege: ' . $name);
 
         return redirect(Inermin::adminPath('privileges'))->with('success', 'Privilege saved successfully!');
@@ -173,6 +174,7 @@ class InerminPrivilegesController extends InerminController
 
         $this->savePrivilegeRoles($id, $request->input('roles', []));
 
+        Inermin::clearCache();
         Inermin::insertLog('Updated privilege #' . $id);
 
         return redirect(Inermin::adminPath('privileges'))->with('success', 'Privilege updated successfully!');

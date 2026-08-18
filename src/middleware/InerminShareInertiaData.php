@@ -88,6 +88,7 @@ class InerminShareInertiaData
             $privId = Session::get('admin_privileges');
             $isSuperadmin = Session::get('admin_is_superadmin');
 
+            // Original menu fetching (no cache) to avoid empty menu issue
             if ($isSuperadmin) {
                 $rawMenus = DB::table('cms_menus')
                     ->where('is_active', 1)
@@ -95,20 +96,17 @@ class InerminShareInertiaData
                     ->orderBy('sorting', 'asc')
                     ->get();
             } else {
-                // Fetch menus explicitly assigned to this privilege in cms_menus_privileges
                 $allowedMenuIds = DB::table('cms_menus_privileges')
                     ->where('id_cms_privileges', $privId)
                     ->pluck('id_cms_menus')
                     ->toArray();
 
-                // Automatically include parent menu IDs for any allowed child menu
                 if (!empty($allowedMenuIds)) {
                     $parentIds = DB::table('cms_menus')
                         ->whereIn('id', $allowedMenuIds)
                         ->where('parent_id', '>', 0)
                         ->pluck('parent_id')
                         ->toArray();
-                    
                     $allowedMenuIds = array_unique(array_merge($allowedMenuIds, $parentIds));
                 }
 

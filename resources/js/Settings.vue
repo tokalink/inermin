@@ -72,7 +72,7 @@ const submitAddSetting = () => {
 
 const deleteSettingKey = (id, name) => {
   if (confirm(`Are you sure you want to delete setting key "${name}"?`)) {
-    router.get(currentPath.value + '/delete-setting/' + id)
+    router.post(currentPath.value + '/delete-setting/' + id)
   }
 }
 

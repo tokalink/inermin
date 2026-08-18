@@ -17,7 +17,7 @@ class InerminMenusController extends InerminController
         $this->orderby = 'sorting,asc';
     }
 
-    public function getIndex(\Illuminate\Http\Request $request = null)
+    public function getIndex(?\Illuminate\Http\Request $request = null)
     {
         if (!Inermin::isSuperadmin()) {
             return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
@@ -126,6 +126,7 @@ class InerminMenusController extends InerminController
             }
         }
 
+        Inermin::clearCache();
         return redirect(Inermin::adminPath('menus'))->with('success', 'Menu saved successfully!');
     }
 
@@ -133,6 +134,7 @@ class InerminMenusController extends InerminController
     {
         $current = DB::table('cms_menus')->where('id', $id)->first();
         if (!$current) {
+            Inermin::clearCache();
             return redirect()->back();
         }
 
@@ -150,6 +152,7 @@ class InerminMenusController extends InerminController
             DB::table('cms_menus')->where('id', $target->id)->update(['sorting' => $current->sorting]);
         }
 
+        Inermin::clearCache();
         return redirect()->back()->with('success', 'Menu order updated!');
     }
 
@@ -162,6 +165,7 @@ class InerminMenusController extends InerminController
                 'parent_id' => $m['parent_id'] ?? 0,
             ]);
         }
+        Inermin::clearCache();
         return redirect()->back()->with('success', 'Menu order updated successfully!');
     }
 
@@ -172,6 +176,7 @@ class InerminMenusController extends InerminController
         DB::table('cms_menus')->where('parent_id', $id)->delete();
         DB::table('cms_menus_privileges')->where('id_cms_menus', $id)->delete();
 
+        Inermin::clearCache();
         return redirect(Inermin::adminPath('menus'))->with('success', 'Menu deleted successfully!');
     }
 }

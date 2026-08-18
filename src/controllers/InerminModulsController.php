@@ -44,7 +44,7 @@ class InerminModulsController extends InerminController
         ];
     }
 
-    public function getIndex(\Illuminate\Http\Request $request = null)
+    public function getIndex(?\Illuminate\Http\Request $request = null)
     {
         if (!Inermin::isSuperadmin()) {
             return redirect(Inermin::adminPath())->with('error', 'Access Denied!');
@@ -206,9 +206,11 @@ class InerminModulsController extends InerminController
         }
 
         if ($module_type === 'custom') {
+            Inermin::clearCache();
             return redirect(Inermin::adminPath('modules/step4/' . $id));
         }
 
+        Inermin::clearCache();
         return redirect(Inermin::adminPath('modules/step2/' . $id));
     }
 
@@ -332,6 +334,7 @@ class InerminModulsController extends InerminController
             );
         }
 
+        Inermin::clearCache();
         return redirect(Inermin::adminPath('modules'))->with('success', 'Module created successfully!');
     }
 

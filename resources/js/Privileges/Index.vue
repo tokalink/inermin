@@ -248,7 +248,7 @@ const filteredPrivileges = computed(() => {
                     <Link
                       v-if="p.id !== 1"
                       :href="adminPath + '/privileges/delete/' + p.id"
-                      method="get"
+                      method="post"
                       as="button"
                       confirm="Are you sure you want to delete this privilege?"
                       class="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"

@@ -221,7 +221,7 @@ const executeBulkAction = (actionName) => {
 
 const deleteRow = (id) => {
   if (confirm('Are you sure you want to delete this record?')) {
-    router.get(currentPath.value + '/delete/' + id)
+    router.post(currentPath.value + '/delete/' + id)
   }
 }
 

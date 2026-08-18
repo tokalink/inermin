@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import InerminAppLayout from '../InerminAppLayout.vue'
 
 const props = defineProps({
@@ -13,6 +13,9 @@ const props = defineProps({
   apps: Array,
   group_names: Array,
 })
+
+const page = usePage()
+const adminPath = computed(() => '/' + (page.props.admin_path || 'administrator').replace(/^\//, ''))
 
 const selectedAppFilter = ref('all')
 
@@ -70,7 +73,7 @@ const onDrop = (event, dropIndex) => {
     sorting: idx + 1
   }))
 
-  router.post('/administrator/menus/save-sorting', { menus: payload }, { preserveScroll: true })
+  router.post(`${adminPath.value}/menus/save-sorting`, { menus: payload }, { preserveScroll: true })
 }
 
 const addSectionHeaderGroup = () => {
@@ -118,18 +121,18 @@ const resetForm = () => {
 }
 
 const saveMenu = () => {
-  router.post('/administrator/menus/save', activeMenuForm.value, {
+  router.post(`${adminPath.value}/menus/save`, activeMenuForm.value, {
     onSuccess: () => resetForm(),
   })
 }
 
 const moveOrder = (id, direction) => {
-  router.get(`/administrator/menus/move-order/${id}/${direction}`, {}, { preserveScroll: true })
+  router.post(`${adminPath.value}/menus/move-order/${id}/${direction}`, {}, { preserveScroll: true })
 }
 
 const deleteMenu = (id, name) => {
   if (confirm(`Are you sure you want to delete menu "${name}"?`)) {
-    window.location.href = `/administrator/menus/delete/${id}`
+    router.post(`${adminPath.value}/menus/delete/${id}`)
   }
 }
 </script>

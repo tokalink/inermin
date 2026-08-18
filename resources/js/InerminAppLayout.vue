@@ -311,10 +311,9 @@ onMounted(() => {
             <!-- Custom Dynamic User Generated Menus (Supports Section Headers, Parent & Child Submenus) -->
             <template v-for="item in filteredCustomMenu" :key="item.id">
               
-              <!-- HEADER SECTION DIVIDER ITEM -->
-              <li v-if="item.type === 'Header'" class="pt-4 pb-1">
-                <div v-if="!isCollapsed || isMobileOpen" class="px-3 text-[10px] tracking-[0.22em] text-stone-400 font-extrabold uppercase flex items-center gap-2">
-                  <i :class="[item.icon || 'bi bi-grid-fill', 'text-[rgb(var(--accent-rgb))] text-xs']"></i>
+              <li v-if="item.type === 'Header'" class="pt-3">
+                <div v-if="!isCollapsed || isMobileOpen" class="px-3 mb-2 text-[10px] tracking-[0.22em] text-stone-400 font-semibold uppercase flex items-center gap-2">
+                  <i v-if="item.icon" :class="[item.icon, 'text-[rgb(var(--accent-rgb))] text-xs']"></i>
                   <span>{{ item.name }}</span>
                 </div>
                 <div v-else class="w-full h-px bg-stone-200 dark:bg-white/10 my-1"></div>
@@ -330,7 +329,7 @@ onMounted(() => {
                   ]"
                 >
                   <div class="flex items-center gap-3 truncate">
-                    <i :class="[item.icon || 'bi bi-folder2-open', 'nav-icon text-base shrink-0']"></i>
+                    <i v-if="item.icon" :class="[item.icon, 'nav-icon text-base shrink-0']"></i>
                     <span v-if="!isCollapsed || isMobileOpen" class="truncate">{{ item.name }}</span>
                   </div>
                   <i v-if="!isCollapsed || isMobileOpen" :class="['bi text-xs transition-transform duration-200 text-stone-400', isParentActiveOrExpanded(item) ? 'bi-chevron-down' : 'bi-chevron-right']"></i>
@@ -348,7 +347,7 @@ onMounted(() => {
                           : 'text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white hover:bg-stone-100/60 dark:hover:bg-white/5'
                       ]"
                     >
-                      <i :class="[child.icon || 'bi bi-circle', 'text-[11px] shrink-0 text-stone-400 group-hover:text-[rgb(var(--accent-rgb))] transition-colors']"></i>
+                      <i v-if="child.icon" :class="[child.icon, 'text-[11px] shrink-0 text-stone-400 group-hover:text-[rgb(var(--accent-rgb))] transition-colors']"></i>
                       <span class="truncate">{{ child.name }}</span>
                     </Link>
                   </li>
@@ -366,7 +365,7 @@ onMounted(() => {
                       : 'text-stone-600 dark:text-stone-300'
                   ]"
                 >
-                  <i :class="[item.icon || 'bi bi-folder2', 'nav-icon text-base shrink-0']"></i>
+                  <i v-if="item.icon" :class="[item.icon, 'nav-icon text-base shrink-0']"></i>
                   <span v-if="!isCollapsed || isMobileOpen" class="truncate">{{ item.name }}</span>
                 </Link>
               </li>
@@ -724,6 +723,7 @@ onMounted(() => {
 
                 <Link
                   :href="adminPath + '/logout'"
+                  method="post"
                   class="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
                 >
                   <i class="bi bi-box-arrow-right text-base"></i>

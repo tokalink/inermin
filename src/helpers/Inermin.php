@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Request;
 
 class Inermin
 {
+    public static function clearCache()
+    {
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    }
+
     public static function adminPath($path = null)
     {
         $prefix = config('inermin.ADMIN_PATH', 'administrator');
@@ -142,17 +147,25 @@ class Inermin
         if (!$modulePath) return true;
 
         try {
-            $module = DB::table('cms_moduls')
-                ->where('path', $modulePath)
-                ->orWhere('table_name', $modulePath)
-                ->first();
+            $cacheKey = 'inermin_role_' . $privId . '_' . $modulePath;
+            $role = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () use ($modulePath, $privId) {
+                $module = DB::table('cms_moduls')
+                    ->where('path', $modulePath)
+                    ->orWhere('table_name', $modulePath)
+                    ->first();
 
-            if (!$module) return true;
+                if (!$module) return 'NO_MODULE';
 
-            $role = DB::table('cms_privileges_roles')
-                ->where('id_cms_privileges', $privId)
-                ->where('id_cms_moduls', $module->id)
-                ->first();
+                $roleData = DB::table('cms_privileges_roles')
+                    ->where('id_cms_privileges', $privId)
+                    ->where('id_cms_moduls', $module->id)
+                    ->first();
+
+                return $roleData ?: 'NO_ROLE';
+            });
+
+            if ($role === 'NO_MODULE') return true;
+            if ($role === 'NO_ROLE') return false;
 
             return $role ? (bool) $role->{$action} : false;
         } catch (\Exception $e) {
@@ -278,7 +291,7 @@ class Inermin
                 Route::get('/edit/{id?}', [$controllerClass, 'getEdit']);
                 Route::post('/edit/{id?}', [$controllerClass, 'postEditSave']);
                 Route::get('/detail/{id?}', [$controllerClass, 'getDetail']);
-                Route::get('/delete/{id?}', [$controllerClass, 'getDelete']);
+                Route::post('/delete/{id?}', [$controllerClass, 'getDelete']);
                 Route::post('/action-selected', [$controllerClass, 'postActionSelected']);
                 Route::match(['get', 'post'], '/export-data', [$controllerClass, 'postExportData']);
                 Route::match(['get', 'post'], '/import-data', [$controllerClass, 'postImportData']);
