@@ -9,6 +9,9 @@ use Illuminate\Support\Str;
 
 class InerminDatabaseSeeder extends Seeder
 {
+    public $adminPassword;         // injected by installer command
+    public $createdAdminPassword;  // set when a fresh admin user is created
+
     public function run()
     {
         // 1. Super Admin Privilege
@@ -25,7 +28,7 @@ class InerminDatabaseSeeder extends Seeder
         // 2. Default User (credentials from ENV - never use weak hardcoded default in production)
         if (DB::table('cms_users')->count() == 0) {
             $adminEmail = env('INERMIN_ADMIN_EMAIL', 'admin@inermin.com');
-            $adminPassword = env('INERMIN_ADMIN_PASSWORD', Str::random(16));
+            $adminPassword = $this->adminPassword ?: env('INERMIN_ADMIN_PASSWORD', Str::random(16));
 
             DB::table('cms_users')->insert([
                 'id' => 1,
@@ -36,6 +39,8 @@ class InerminDatabaseSeeder extends Seeder
                 'status' => 'Active',
                 'created_at' => now(),
             ]);
+
+            $this->createdAdminPassword = $adminPassword;
 
             if (!env('INERMIN_ADMIN_PASSWORD')) {
                 $this->command?->info("Generated admin password: {$adminPassword}");

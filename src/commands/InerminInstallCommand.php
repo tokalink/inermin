@@ -4,6 +4,7 @@ namespace Tokalink\Inermin\commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 use Tokalink\Inermin\database\seeders\InerminDatabaseSeeder;
 
@@ -29,7 +30,9 @@ class InerminInstallCommand extends Command
 
         // 3. Seed Database
         $this->info('Seeding default Inermin superadmin and settings...');
+        $adminPassword = env('INERMIN_ADMIN_PASSWORD') ?: Str::random(16);
         $seeder = new InerminDatabaseSeeder();
+        $seeder->adminPassword = $adminPassword;
         $seeder->run();
 
         // 4. Publish Static Assets (Default Avatar, Icons)
@@ -63,14 +66,14 @@ class InerminInstallCommand extends Command
         
         $adminEmail = env('INERMIN_ADMIN_EMAIL', 'admin@inermin.com');
         $this->info(' Email    : ' . $adminEmail);
-        
-        if (!env('INERMIN_ADMIN_PASSWORD')) {
-            $this->info(' Password : (Auto-generated and shown during DB seeding)');
-            $this->warn(' Note: Set INERMIN_ADMIN_PASSWORD in .env to define explicitly.');
+
+        if (!empty($seeder->createdAdminPassword)) {
+            $this->info(' Password : ' . $seeder->createdAdminPassword);
+            $this->warn(' Save this password now. Set INERMIN_ADMIN_PASSWORD in .env to control it explicitly.');
         } else {
-            $this->info(' Password : (As defined in .env)');
+            $this->info(' Password : (Existing admin account – password unchanged)');
         }
-        
+
         $this->info(' Admin URL: /' . config('inermin.ADMIN_PATH', 'administrator'));
         $this->info('=====================================================');
     }
